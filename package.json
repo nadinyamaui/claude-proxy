@@ -1,0 +1,20 @@
+{
+  "name": "claude-proxy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HTTP proxy in front of the claude, codex and grok CLIs",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/index.ts",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.2",
+    "typescript": "^5.9.3"
+  }
+}
