@@ -54,7 +54,9 @@ export function run(name: ProviderName, req: RunRequest): Promise<RunResult> {
         resolve({ provider: name, ...provider.parse(stdout) });
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
-        reject(new ProviderError(`could not parse ${name} output: ${detail}`, name, code, stdout.slice(0, 2000)));
+        reject(
+          new ProviderError(`could not parse ${name} output: ${detail}`, name, code, stdout.slice(0, 2000)),
+        );
       }
     });
 

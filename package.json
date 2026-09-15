@@ -1,20 +1,53 @@
 {
   "name": "claude-proxy",
   "version": "0.1.0",
-  "private": true,
   "description": "HTTP proxy in front of the claude, codex and grok CLIs",
+  "license": "MIT",
+  "author": "Nadin Yamaui",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nadinyamaui/claude-proxy.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nadinyamaui/claude-proxy/issues"
+  },
+  "homepage": "https://github.com/nadinyamaui/claude-proxy#readme",
+  "keywords": [
+    "claude",
+    "codex",
+    "grok",
+    "cli",
+    "proxy",
+    "llm",
+    "agent"
+  ],
   "type": "module",
   "engines": {
     "node": ">=20"
   },
+  "//": "Deployed as an app, not published to npm; `private` guards against an accidental publish.",
+  "private": true,
   "scripts": {
     "dev": "node --env-file-if-exists=.env --watch src/index.ts",
     "start": "node --env-file-if-exists=.env dist/index.js",
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^24.10.2",
-    "typescript": "^5.9.3"
+    "eslint": "^10.10.0",
+    "prettier": "^3.9.6",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.1"
   }
 }

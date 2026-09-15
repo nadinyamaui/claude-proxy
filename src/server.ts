@@ -76,7 +76,11 @@ export function createApp(): Server {
         json(res, 200, await run(provider, req));
       } catch (err) {
         if (err instanceof BodyError) {
-          json(res, 400, { error: err.message });
+          // An oversized body leaves unread bytes in flight; close the
+          // connection once the client has the response.
+          const close = err.status === 413 ? () => httpReq.destroy() : undefined;
+          res.setHeader("connection", "close");
+          json(res, err.status, { error: err.message }, close);
         } else if (err instanceof ProviderError) {
           json(res, 502, {
             error: err.message,

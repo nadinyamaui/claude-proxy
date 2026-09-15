@@ -2,13 +2,13 @@ import { timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { config } from "./config.js";
 
-export function json(res: ServerResponse, status: number, body: unknown): void {
+export function json(res: ServerResponse, status: number, body: unknown, onFlush?: () => void): void {
   const payload = JSON.stringify(body);
   res.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "content-length": Buffer.byteLength(payload),
   });
-  res.end(payload);
+  res.end(payload, onFlush);
 }
 
 /** Constant-time bearer check. Returns true when the request may proceed. */
@@ -20,18 +20,33 @@ export function authorize(req: IncomingMessage): boolean {
   return presented.length === expected.length && timingSafeEqual(presented, expected);
 }
 
-export class BodyError extends Error {}
+export class BodyError extends Error {
+  constructor(
+    message: string,
+    readonly status = 400,
+  ) {
+    super(message);
+    this.name = "BodyError";
+  }
+}
 
 export function readJsonBody(req: IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     let size = 0;
+    let over = false;
 
     req.on("data", (chunk: Buffer) => {
+      if (over) return;
       size += chunk.length;
       if (size > config.maxBodyBytes) {
-        reject(new BodyError(`body exceeds ${config.maxBodyBytes} bytes`));
-        req.destroy();
+        // Stop buffering, but leave the socket up: destroying it here would
+        // race the 413 and the client would see a reset instead of the error.
+        // The caller closes the connection once the response has flushed.
+        over = true;
+        chunks.length = 0;
+        req.pause();
+        reject(new BodyError(`body exceeds ${config.maxBodyBytes} bytes`, 413));
         return;
       }
       chunks.push(chunk);

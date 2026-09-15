@@ -1,0 +1,91 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Self-hosted runners execute workflow code on your own machine, so a PR from a
+# fork must never start a job here.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, typecheck, build, test
+    runs-on: self-hosted
+    timeout-minutes: 15
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # Persistent runners keep the workspace between jobs; wipe any stray
+          # files a previous run left behind.
+          clean: true
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Format
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test
+
+      - name: Confirm the built server starts and serves /health
+        env:
+          PORT: 8799
+          PROXY_TOKEN: ci-smoke-token
+        run: |
+          node dist/index.js &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
+
+          for _ in $(seq 1 20); do
+            if curl -sf "http://127.0.0.1:$PORT/health" >/dev/null; then
+              curl -s "http://127.0.0.1:$PORT/health"
+              exit 0
+            fi
+            sleep 0.5
+          done
+
+          echo "server did not become healthy in time" >&2
+          exit 1
+
+  audit:
+    name: Dependency audit
+    runs-on: self-hosted
+    timeout-minutes: 10
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Audit production and dev dependencies
+        run: npm audit --audit-level=high

@@ -6,10 +6,9 @@
     "moduleResolution": "NodeNext",
     "types": ["node"],
 
-    "rootDir": "src",
-    "outDir": "dist",
-    "sourceMap": true,
-    "declaration": true,
+    "rootDir": ".",
+    "noEmit": true,
+    "allowJs": true,
 
     "strict": true,
     "noUncheckedIndexedAccess": true,
@@ -22,5 +21,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*.ts"]
+  // Everything the editor, `npm run typecheck` and type-aware ESLint should
+  // see. `tsconfig.build.json` narrows this to `src/` for emitting.
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "eslint.config.js"]
 }
