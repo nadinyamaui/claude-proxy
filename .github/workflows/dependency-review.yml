@@ -10,9 +10,8 @@ permissions:
 jobs:
   review:
     name: Review dependency changes
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - uses: actions/checkout@v5

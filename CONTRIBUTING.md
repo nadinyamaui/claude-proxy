@@ -40,9 +40,12 @@ a provider file should only describe how its CLI differs.
 
 ## A note on CI
 
-CI runs on a **self-hosted** runner. Workflows are configured not to run for
-pull requests from forks, so a maintainer will need to run the checks for an
-outside contribution. Do not add workflows triggered by `pull_request_target`.
+CI runs on GitHub-hosted runners across Node 20, 22 and 24, and runs on pull
+requests from forks. A first-time contributor's run may need a maintainer to
+click approve.
+
+Please don't add workflows triggered by `pull_request_target` — it runs
+workflow code from the fork with repository secrets in scope.
 
 ## Code of Conduct
 

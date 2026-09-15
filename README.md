@@ -98,7 +98,8 @@ vulnerability.
 
 ## CI
 
-Checks run on a **self-hosted** runner (`runs-on: self-hosted`):
+Checks run on GitHub-hosted `ubuntu-latest` runners, free for public
+repositories:
 
 | Workflow                | What it does                                                                                          |
 | ----------------------- | ----------------------------------------------------------------------------------------------------- |
@@ -107,21 +108,13 @@ Checks run on a **self-hosted** runner (`runs-on: self-hosted`):
 | `dependency-review.yml` | blocks PRs introducing high-severity advisories                                                       |
 | `dependabot.yml`        | weekly npm and Actions updates, dev-tooling bumps grouped                                             |
 
-Because a self-hosted runner executes workflow code on your own machine, every
-job is guarded with a check that the PR did not come from a fork, and no
-workflow uses `pull_request_target`. Keep it that way. Also set
-**Settings → Actions → Fork pull request workflows → Require approval for all
-external contributors**.
+`ci.yml` runs on Node 20, 22 and 24 to cover the `engines.node: >=20` claim in
+`package.json`; formatting and linting run once, on 24.
 
-You need a runner registered for any of this to run, otherwise jobs queue
-forever:
-
-```bash
-gh api repos/nadinyamaui/claude-proxy/actions/runners/registration-token --jq .token
-```
-
-Then follow **Settings → Actions → Runners → New self-hosted runner**. The
-runner host needs `git`, `curl` and network access for `actions/setup-node`.
+Hardening worth keeping if you add workflows: the default `GITHUB_TOKEN` is
+read-only, and nothing uses `pull_request_target` — which would run workflow
+code from a fork with repository secrets in scope. Fork PRs are safe on hosted
+runners precisely because they get a disposable VM and no secrets.
 
 ## Provider notes
 

@@ -7,8 +7,6 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Self-hosted runners execute workflow code on your own machine, so a PR from a
-# fork must never start a job here.
 permissions:
   contents: read
 
@@ -18,30 +16,34 @@ concurrency:
 
 jobs:
   check:
-    name: Lint, typecheck, build, test
-    runs-on: self-hosted
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
     timeout-minutes: 15
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+
+    strategy:
+      fail-fast: false
+      matrix:
+        # Covers the `engines.node: >=20` claim in package.json.
+        node: ["20", "22", "24"]
 
     steps:
       - uses: actions/checkout@v5
-        with:
-          # Persistent runners keep the workspace between jobs; wipe any stray
-          # files a previous run left behind.
-          clean: true
 
       - uses: actions/setup-node@v5
         with:
-          node-version-file: .nvmrc
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - name: Install
         run: npm ci
 
       - name: Format
+        # One Node version is enough for a formatting check.
+        if: matrix.node == '24'
         run: npm run format:check
 
       - name: Lint
+        if: matrix.node == '24'
         run: npm run lint
 
       - name: Typecheck
@@ -75,9 +77,8 @@ jobs:
 
   audit:
     name: Dependency audit
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - uses: actions/checkout@v5
