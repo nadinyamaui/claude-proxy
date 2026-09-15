@@ -38,6 +38,14 @@ npm run check
 Runs `format:check`, `lint`, `typecheck` and `test` — the same four things CI
 runs. `npm run format` and `npm run lint:fix` apply automatic fixes.
 
+Linting is [oxlint](https://oxc.rs), not ESLint. The project is on TypeScript
+7, and no typescript-eslint release supports the TS 7 compiler API yet
+([#10940](https://github.com/typescript-eslint/typescript-eslint/issues/10940));
+oxlint parses TypeScript natively, so it does not care. The tradeoff is that
+type-aware rules such as `no-floating-promises` are not available — `tsc` in
+`strict` mode plus `noUncheckedIndexedAccess` and
+`exactOptionalPropertyTypes` is doing that work instead.
+
 The test suite drives a stub CLI in `test/fixtures/`, so it runs offline and
 costs nothing. See [CONTRIBUTING.md](CONTRIBUTING.md).
 

@@ -21,7 +21,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  // Everything the editor, `npm run typecheck` and type-aware ESLint should
-  // see. `tsconfig.build.json` narrows this to `src/` for emitting.
-  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "eslint.config.js"]
+  // Everything the editor and `npm run typecheck` should see.
+  // `tsconfig.build.json` narrows this to `src/` for emitting.
+  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
 }

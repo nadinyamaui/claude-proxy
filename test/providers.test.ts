@@ -6,7 +6,7 @@ import { isProviderName, providers } from "../src/providers/index.js";
 
 describe("registry", () => {
   it("exposes the three providers", () => {
-    expect(Object.keys(providers).sort()).toEqual(["claude", "codex", "grok"]);
+    expect(Object.keys(providers).toSorted()).toEqual(["claude", "codex", "grok"]);
   });
 
   it("narrows only known names", () => {
