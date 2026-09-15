@@ -5,6 +5,13 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # typescript-eslint peers on `typescript <6.1.0` and refuses to load
+      # against the TS 7 API, so a 7.x bump breaks `npm run lint` outright.
+      # Drop this once typescript-eslint ships TS 7 support:
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: typescript
+        versions: [">=7.0.0"]
     groups:
       # One PR for the routine dev-tooling bumps instead of five.
       dev-dependencies:
