@@ -1,5 +1,7 @@
 node_modules/
 dist/
+# Background run working directories and their SQLite database.
+/runs/
 *.log
 .env
 .env.*

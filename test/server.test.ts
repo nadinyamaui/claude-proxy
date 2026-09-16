@@ -4,7 +4,8 @@ import { createApp } from "../src/server.js";
 
 const TOKEN = "test-token";
 let base: string;
-const server = createApp();
+const app = createApp();
+const { server } = app;
 
 beforeAll(async () => {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -14,6 +15,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await new Promise<void>((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  await app.shutdown();
 });
 
 /** `Response.json()` is `unknown`; every assertion here checks the shape itself. */

@@ -1,35 +1,68 @@
 #!/usr/bin/env node
 // Stands in for the real `claude` CLI so the suite never makes a network call.
 // Echoes back what it was given, in the shape `claude -p --output-format json`
-// produces. Exits non-zero when the prompt is the literal "FAIL".
+// produces (or the `stream-json` event stream when asked for it). Exits
+// non-zero when the prompt is the literal "FAIL".
+import { writeFileSync } from "node:fs";
+
+const args = process.argv.slice(2);
+const streaming = args.includes("stream-json");
 
 let stdin = "";
 process.stdin.setEncoding("utf8");
 process.stdin.on("data", (c) => (stdin += c));
 process.stdin.on("end", () => {
-  if (stdin.trim() === "FAIL") {
+  const prompt = stdin.trim();
+
+  if (prompt === "FAIL") {
     process.stderr.write("fake-claude: asked to fail\n");
     process.exit(3);
   }
-  if (stdin.trim() === "NOTJSON") {
+  if (prompt === "NOTJSON") {
     process.stdout.write("this is not json");
     process.exit(0);
   }
-  if (stdin.trim() === "HANG") {
+  if (prompt === "HANG") {
+    // Keep running until killed; announce it so cancellation tests can wait
+    // for the process to actually be up.
+    if (streaming) process.stdout.write(JSON.stringify({ type: "system", subtype: "init" }) + "\n");
+    process.on("SIGTERM", () => process.exit(143));
     setTimeout(() => {}, 60_000);
     return;
   }
+  if (prompt === "WRITE") {
+    // Prove the working directory: leave a file behind.
+    writeFileSync("written-by-fake-claude.txt", "hello from the agent\n");
+  }
 
-  const args = process.argv.slice(2);
+  // ENV reports FAKE_ENV reversed, so tests can prove it arrived without the
+  // literal value showing up in the stored result.
+  const text =
+    prompt === "ENV"
+      ? `env: ${[...(process.env.FAKE_ENV ?? "(unset)")].reverse().join("")}`
+      : `echo: ${prompt}`;
+  const result = {
+    type: "result",
+    subtype: "success",
+    is_error: false,
+    result: text,
+    session_id: "fake-session-1",
+    total_cost_usd: 0.42,
+    argv: args,
+    cwd: process.cwd(),
+  };
+
+  if (!streaming) {
+    process.stdout.write(JSON.stringify(result));
+    return;
+  }
+
+  process.stderr.write("fake-claude: streaming\n");
   process.stdout.write(
-    JSON.stringify({
-      type: "result",
-      subtype: "success",
-      is_error: false,
-      result: `echo: ${stdin.trim()}`,
-      session_id: "fake-session-1",
-      total_cost_usd: 0.42,
-      argv: args,
-    }),
+    JSON.stringify({ type: "system", subtype: "init", session_id: "fake-session-1" }) + "\n",
   );
+  process.stdout.write(
+    JSON.stringify({ type: "assistant", message: { content: [{ type: "text", text }] } }) + "\n",
+  );
+  process.stdout.write(JSON.stringify(result) + "\n");
 });

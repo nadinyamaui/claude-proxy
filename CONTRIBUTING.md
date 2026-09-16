@@ -40,7 +40,7 @@ a provider file should only describe how its CLI differs.
 
 ## A note on CI
 
-CI runs on GitHub-hosted runners across Node 20, 22 and 24, and runs on pull
+CI runs on GitHub-hosted runners across Node 22 and 24, and runs on pull
 requests from forks. A first-time contributor's run may need a maintainer to
 click approve.
 
