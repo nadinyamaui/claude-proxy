@@ -93,7 +93,8 @@ function retryWhileBusy(fn: () => void, attempts = 100, waitMs = 20): void {
       fn();
       return;
     } catch (err) {
-      const busy = typeof err === "object" && err !== null && (err as { errcode?: number }).errcode === SQLITE_BUSY;
+      const busy =
+        typeof err === "object" && err !== null && (err as { errcode?: number }).errcode === SQLITE_BUSY;
       if (!busy || i >= attempts) throw err;
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, waitMs);
     }
@@ -224,7 +225,9 @@ export class RunStore {
    */
   recoverOrphans(): number {
     const ts = now();
-    const orphans = this.db.prepare("SELECT id FROM runs WHERE status IN ('queued', 'running')").all() as Row[];
+    const orphans = this.db
+      .prepare("SELECT id FROM runs WHERE status IN ('queued', 'running')")
+      .all() as Row[];
     for (const row of orphans) {
       this.appendLog(row["id"] as string, "proxy", "proxy restarted while this run was in progress");
     }

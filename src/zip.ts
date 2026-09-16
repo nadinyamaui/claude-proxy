@@ -1,4 +1,13 @@
-import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  fstatSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, posix, relative, sep } from "node:path";
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
 
@@ -227,15 +236,24 @@ export function zipDirectory(root: string): Buffer {
   let offset = 0;
 
   for (const item of items) {
-    const stat = statSync(item.abs);
-    const { time, date } = dosDateTime(stat.mtime);
     const name = Buffer.from(item.rel, "utf8");
     let data = Buffer.alloc(0);
     let raw = data;
     let method = METHOD_STORED;
     let crc = 0;
-    if (!item.isDir) {
-      raw = readFileSync(item.abs);
+    let stat;
+    if (item.isDir) {
+      stat = statSync(item.abs);
+    } else {
+      // Stat and read through one descriptor so the file cannot be swapped
+      // between the two.
+      const fd = openSync(item.abs, "r");
+      try {
+        stat = fstatSync(fd);
+        raw = readFileSync(fd);
+      } finally {
+        closeSync(fd);
+      }
       crc = crc32(raw);
       const deflated = deflateRawSync(raw);
       if (deflated.length < raw.length) {
@@ -245,6 +263,7 @@ export function zipDirectory(root: string): Buffer {
         data = raw;
       }
     }
+    const { time, date } = dosDateTime(stat.mtime);
     if (raw.length >= 0xffffffff || offset >= 0xffffffff) {
       throw new ZipError("directory is too large for a non-zip64 archive");
     }

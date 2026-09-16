@@ -18,7 +18,10 @@ export type RunsService = {
 export function createRunsService(): RunsService {
   mkdirSync(config.runsDir, { recursive: true });
   const store = new RunStore(config.runsDb);
-  const runner = new Runner(store, { maxConcurrent: config.maxConcurrentRuns, timeoutMs: config.runTimeoutMs });
+  const runner = new Runner(store, {
+    maxConcurrent: config.maxConcurrentRuns,
+    timeoutMs: config.runTimeoutMs,
+  });
   return {
     store,
     runner,
@@ -44,7 +47,8 @@ function parseEnv(raw: string | undefined): Record<string, string> {
   }
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(parsed)) {
-    if (!ENV_KEY.test(key)) throw new BodyError(`env key ${JSON.stringify(key)} is not a valid variable name`);
+    if (!ENV_KEY.test(key))
+      throw new BodyError(`env key ${JSON.stringify(key)} is not a valid variable name`);
     if (typeof value !== "string") throw new BodyError(`env.${key} must be a string`);
     env[key] = value;
   }
@@ -61,7 +65,8 @@ function field(form: FormData, name: string): string | undefined {
 /** Public view of a run; `raw` is dropped from listings to keep them small. */
 function view(run: RunRecord, { full }: { full: boolean }): unknown {
   if (full || !run.result) return run;
-  const { raw: _raw, ...result } = run.result;
+  const result: Record<string, unknown> = { ...run.result };
+  delete result["raw"];
   return { ...run, result };
 }
 
@@ -99,7 +104,9 @@ async function createRun(svc: RunsService, req: IncomingMessage, res: ServerResp
   let extracted: { files: number; bytes: number } | undefined;
   if (upload) {
     try {
-      extracted = extractZip(Buffer.from(await upload.arrayBuffer()), workdir, { maxBytes: config.maxUnzipBytes });
+      extracted = extractZip(Buffer.from(await upload.arrayBuffer()), workdir, {
+        maxBytes: config.maxUnzipBytes,
+      });
     } catch (err) {
       rmSync(workdir, { recursive: true, force: true });
       if (err instanceof ZipError) throw new BodyError(`zip: ${err.message}`);
@@ -115,7 +122,11 @@ async function createRun(svc: RunsService, req: IncomingMessage, res: ServerResp
 
   const run = svc.store.create(input);
   if (extracted) {
-    svc.store.appendLog(id, "proxy", `extracted ${upload!.name}: ${extracted.files} files, ${extracted.bytes} bytes`);
+    svc.store.appendLog(
+      id,
+      "proxy",
+      `extracted ${upload!.name}: ${extracted.files} files, ${extracted.bytes} bytes`,
+    );
   }
   if (Object.keys(env).length > 0) {
     svc.store.appendLog(id, "proxy", `env overrides: ${Object.keys(env).join(", ")}`);
