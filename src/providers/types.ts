@@ -23,10 +23,18 @@ export type Provider = {
   bin: string;
   /** argv for a single non-interactive run. */
   args: (req: RunRequest) => string[];
+  /**
+   * argv for a run whose output should be streamed line by line (background
+   * runs log every line). Falls back to `args` when the CLI has no streaming
+   * mode; `parseStream` must then be omitted too.
+   */
+  streamArgs?: (req: RunRequest) => string[];
   /** What to write to the child's stdin. Defaults to the bare prompt. */
   stdin?: (req: RunRequest) => string;
   /** Turn raw stdout into a normalized result. */
   parse: (stdout: string) => Omit<RunResult, "provider">;
+  /** Like `parse`, for the output `streamArgs` produces. */
+  parseStream?: (stdout: string) => Omit<RunResult, "provider">;
 };
 
 export class ProviderError extends Error {

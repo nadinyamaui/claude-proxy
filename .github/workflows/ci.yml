@@ -23,8 +23,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Covers the `engines.node: >=20` claim in package.json.
-        node: ["20", "22", "24"]
+        # Covers the `engines.node: >=22.13` claim in package.json. The runs
+        # store uses node:sqlite, which is unflagged from 22.13.
+        node: ["22", "24"]
 
     steps:
       - uses: actions/checkout@v7

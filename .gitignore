@@ -1,6 +1,14 @@
 node_modules/
 dist/
+# Background run working directories and their SQLite database.
+/runs/
 *.log
+
+# Zip uploads used to try out background runs, and the tag WSL leaves on
+# files downloaded through Windows.
+*.zip
+*:Zone.Identifier
+
 .env
 .env.*
 !.env.example

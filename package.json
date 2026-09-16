@@ -1,7 +1,7 @@
 {
   "name": "claude-proxy",
   "version": "0.1.0",
-  "description": "HTTP proxy in front of the claude, codex and grok CLIs",
+  "description": "HTTP proxy and background job runner in front of the claude, codex and grok CLIs",
   "license": "MIT",
   "author": "Nadin Yamaui",
   "repository": {
@@ -23,7 +23,7 @@
   ],
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13"
   },
   "//": "Deployed as an app, not published to npm; `private` guards against an accidental publish.",
   "private": true,

@@ -41,6 +41,23 @@ curl -s -X POST localhost:8799/run -H 'authorization: Bearer smoke' -d '{"prompt
 A real run costs money and needs a signed-in CLI. Check `costUsd` in the
 response to see what it cost.
 
+## Smoke-test background runs
+
+For changes under `src/runs/`, `src/zip.ts` or the multipart parsing in
+`src/http.ts`, exercise the queue with the stub CLI so nothing is billed:
+
+```bash
+npm run build && PORT=8799 CLAUDE_BIN=$PWD/test/fixtures/fake-claude.mjs RUNS_DIR=/tmp/proxy-smoke node dist/index.js
+```
+
+```bash
+cd /tmp && mkdir -p smoke && echo brief > smoke/PRODUCT.md && (cd smoke && zip -qr ../smoke.zip .) && curl -s localhost:8799/runs -F prompt=WRITE -F zip=@/tmp/smoke.zip
+```
+
+Then poll `GET /runs/<id>`, read `GET /runs/<id>/logs`, and confirm
+`GET /runs/<id>/workdir.zip` contains `written-by-fake-claude.txt`. The
+fixture's `HANG` prompt is for checking `POST /runs/<id>/cancel`.
+
 To confirm multi-turn behavior, feed the returned `sessionId` back into a
 second request and ask about the first turn.
 

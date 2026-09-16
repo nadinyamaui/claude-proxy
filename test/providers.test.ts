@@ -52,6 +52,32 @@ describe("claude", () => {
     expect(out.sessionId).toBeUndefined();
     expect(out.costUsd).toBeUndefined();
   });
+
+  it("streams with stream-json plus --verbose, keeping the same flags", () => {
+    expect(claude.streamArgs?.({ prompt: "x", model: "m1" })).toEqual([
+      "-p",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      "--model",
+      "m1",
+    ]);
+  });
+
+  it("takes the result from the last result event of a stream", () => {
+    const stdout = [
+      JSON.stringify({ type: "system", subtype: "init", session_id: "s1" }),
+      "not json",
+      JSON.stringify({ type: "assistant", message: {} }),
+      JSON.stringify({ type: "result", result: "done", session_id: "s1", total_cost_usd: 0.1 }),
+      "",
+    ].join("\n");
+    expect(claude.parseStream?.(stdout)).toMatchObject({ text: "done", sessionId: "s1", costUsd: 0.1 });
+  });
+
+  it("fails a stream that never produced a result", () => {
+    expect(() => claude.parseStream?.(JSON.stringify({ type: "system" }))).toThrow(/without a result/);
+  });
 });
 
 describe("codex", () => {

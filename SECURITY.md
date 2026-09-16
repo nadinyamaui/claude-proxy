@@ -26,8 +26,22 @@ these properties before deploying it:
   over stdin to a directly spawned process, so prompt content cannot escape
   into a shell. It _can_ still instruct the agent — treat prompt authors as
   trusted operators.
-- **Requests are bounded** by `MAX_BODY_BYTES` and `TIMEOUT_MS`, but there is
-  no concurrency limit. A caller can spawn many CLI processes at once.
+- **Requests are bounded** by `MAX_BODY_BYTES` and `TIMEOUT_MS`, but `/run`
+  has no concurrency limit. A caller can spawn many CLI processes at once.
+  Background runs (`/runs`) are queued behind `MAX_CONCURRENT_RUNS` and
+  bounded by `RUN_TIMEOUT_MS`, `MAX_UPLOAD_BYTES` and `MAX_UNZIP_BYTES`.
+- **Uploaded zips are unpacked with a built-in reader** that rejects absolute
+  paths, `..` segments and symlink entries, and refuses archives that would
+  expand past `MAX_UNZIP_BYTES`. The extracted tree is still whatever the
+  caller sent: the agent runs inside it with full tool access, and files such
+  as `.mcp.json`, `CLAUDE.md` or `AGENTS.md` in the upload configure the
+  agent. Treat uploaders as trusted operators.
+- **Per-run `env` values are passed to the CLI and never written to SQLite**;
+  only the variable names are logged. They are held in memory while the run is
+  queued or running.
+- **`GET /runs/:id/workdir.zip` serves the whole working directory**,
+  including anything the agent wrote there. The run API shares the
+  `PROXY_TOKEN` gate with `/run` and is meant for a private port.
 
 ## Supported versions
 
