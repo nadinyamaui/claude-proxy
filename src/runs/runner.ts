@@ -74,10 +74,15 @@ export class Runner {
       const pending = this.pending.get(id);
       this.pending.delete(id);
       const controller = new AbortController();
-      const done = this.execute(id, pending?.env ?? {}, controller.signal).finally(() => {
-        this.active.delete(id);
-        this.pump();
-      });
+      const done = this.execute(id, pending?.env ?? {}, controller.signal)
+        // Nothing awaits this on the happy path, so a throw from the store
+        // (disk full, busy timeout, closed mid-shutdown) would otherwise be an
+        // unhandled rejection and take the whole proxy down with it.
+        .catch((err: unknown) => console.error(`run ${id} could not be recorded:`, err))
+        .finally(() => {
+          this.active.delete(id);
+          this.pump();
+        });
       this.active.set(id, { controller, done });
     }
   }

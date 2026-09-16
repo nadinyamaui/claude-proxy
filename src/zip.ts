@@ -34,6 +34,8 @@ export type ZipEntry = {
   compressedSize: number;
   /** Offset of the local file header. */
   offset: number;
+  /** Unix permission bits the archive carries, when it carries any. */
+  mode?: number;
 };
 
 const SIG_LOCAL = 0x04034b50;
@@ -115,15 +117,18 @@ export function readEntries(buf: Buffer): ZipEntry[] {
     const unixType = (externalAttrs >>> 16) & UNIX_TYPE_MASK;
     if (unixType === UNIX_SYMLINK) throw new ZipError(`entry ${name} is a symlink, which is not allowed`);
     const isDir = name.endsWith("/") || unixType === UNIX_DIR;
+    const mode = (externalAttrs >>> 16) & 0o777;
 
-    entries.push({
+    const entry: ZipEntry = {
       name: isDir && !name.endsWith("/") ? `${name}/` : name,
       isDir,
       method,
       size,
       compressedSize,
       offset,
-    });
+    };
+    if (mode) entry.mode = mode;
+    entries.push(entry);
   }
   return entries;
 }
@@ -135,7 +140,11 @@ export type ExtractOptions = {
 
 export type ExtractResult = { files: number; bytes: number };
 
-/** Validates the archive without writing anything. Throws ZipError. */
+/**
+ * Validates the archive without writing anything. Throws ZipError. Note that
+ * the sizes checked here are only what the archive claims; `extractZip` caps
+ * what each entry is actually allowed to inflate to.
+ */
 export function inspectZip(buf: Buffer, opts: ExtractOptions): ZipEntry[] {
   const entries = readEntries(buf);
   let total = 0;
@@ -148,7 +157,8 @@ export function inspectZip(buf: Buffer, opts: ExtractOptions): ZipEntry[] {
   return entries;
 }
 
-function entryData(buf: Buffer, e: ZipEntry): Buffer {
+/** `maxBytes` is what is left of the extraction budget for this entry. */
+function entryData(buf: Buffer, e: ZipEntry, maxBytes: number): Buffer {
   const h = e.offset;
   if (h + 30 > buf.length || buf.readUInt32LE(h) !== SIG_LOCAL) {
     throw new ZipError(`entry ${e.name} has a corrupt local header`);
@@ -159,7 +169,19 @@ function entryData(buf: Buffer, e: ZipEntry): Buffer {
   const end = start + e.compressedSize;
   if (end > buf.length) throw new ZipError(`entry ${e.name} runs past the end of the archive`);
   const raw = buf.subarray(start, end);
-  const data = e.method === METHOD_DEFLATE ? inflateRawSync(raw) : raw;
+  let data: Buffer;
+  if (e.method === METHOD_DEFLATE) {
+    try {
+      // The declared size is the uploader's claim, so cap the output here:
+      // without it a bomb allocates gigabytes before the check below runs.
+      data = inflateRawSync(raw, { maxOutputLength: Math.max(maxBytes, 1) });
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new ZipError(`entry ${e.name} could not be inflated: ${detail}`);
+    }
+  } else {
+    data = raw;
+  }
   if (data.length !== e.size) {
     throw new ZipError(`entry ${e.name} decompressed to ${data.length} bytes, expected ${e.size}`);
   }
@@ -177,9 +199,13 @@ export function extractZip(buf: Buffer, dest: string, opts: ExtractOptions): Ext
       mkdirSync(target, { recursive: true });
       continue;
     }
-    const data = entryData(buf, e);
+    // Budget the bytes that actually came out, not the sizes the archive claims.
+    const data = entryData(buf, e, opts.maxBytes - bytes);
+    if (bytes + data.length > opts.maxBytes) {
+      throw new ZipError(`archive expands to more than ${opts.maxBytes} bytes`);
+    }
     mkdirSync(dirname(target), { recursive: true });
-    writeFileSync(target, data);
+    writeFileSync(target, data, e.mode ? { mode: e.mode } : undefined);
     files++;
     bytes += data.length;
   }
@@ -206,10 +232,21 @@ type PackedEntry = {
   data: Buffer;
 };
 
+function isMissing(err: unknown): boolean {
+  return (err as NodeJS.ErrnoException | null)?.code === "ENOENT";
+}
+
 function walk(root: string, dir: string, out: { rel: string; isDir: boolean; abs: string }[]): void {
-  for (const ent of readdirSync(dir, { withFileTypes: true }).toSorted((a, b) =>
-    a.name.localeCompare(b.name),
-  )) {
+  let dirents;
+  try {
+    dirents = readdirSync(dir, { withFileTypes: true });
+  } catch (err) {
+    // A running agent may remove a subdirectory mid-walk; leave it out rather
+    // than failing the whole archive. A missing root is still an error.
+    if (dir !== root && isMissing(err)) return;
+    throw err;
+  }
+  for (const ent of dirents.toSorted((a, b) => a.name.localeCompare(b.name))) {
     if (ent.isSymbolicLink()) continue;
     const abs = join(dir, ent.name);
     const rel = relative(root, abs).split(sep).join(posix.sep);
@@ -242,18 +279,27 @@ export function zipDirectory(root: string): Buffer {
     let method = METHOD_STORED;
     let crc = 0;
     let stat;
-    if (item.isDir) {
-      stat = statSync(item.abs);
-    } else {
-      // Stat and read through one descriptor so the file cannot be swapped
-      // between the two.
-      const fd = openSync(item.abs, "r");
-      try {
-        stat = fstatSync(fd);
-        raw = readFileSync(fd);
-      } finally {
-        closeSync(fd);
+    try {
+      if (item.isDir) {
+        stat = statSync(item.abs);
+      } else {
+        // Stat and read through one descriptor so the file cannot be swapped
+        // between the two.
+        const fd = openSync(item.abs, "r");
+        try {
+          stat = fstatSync(fd);
+          raw = readFileSync(fd);
+        } finally {
+          closeSync(fd);
+        }
       }
+    } catch (err) {
+      // The directory is live while a run works in it: anything that went away
+      // between the walk and now simply is not in the archive.
+      if (isMissing(err)) continue;
+      throw err;
+    }
+    if (!item.isDir) {
       crc = crc32(raw);
       const deflated = deflateRawSync(raw);
       if (deflated.length < raw.length) {

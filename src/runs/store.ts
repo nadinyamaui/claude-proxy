@@ -137,6 +137,11 @@ export class RunStore {
     // busy handler for it, so two processes opening at once (two proxies on
     // one file, or parallel test workers) must retry by hand.
     retryWhileBusy(() => this.db.exec("PRAGMA journal_mode = WAL;"));
+    // `appendLog` commits once per output line, on the event loop thread. The
+    // default FULL would fsync the WAL every time and stall the HTTP server
+    // whenever a run is chatty; NORMAL is durable enough here, since a run
+    // interrupted by a crash is failed on restart anyway.
+    this.db.exec("PRAGMA synchronous = NORMAL;");
     retryWhileBusy(() => this.db.exec(SCHEMA));
 
     this.insertRun = this.db.prepare(
