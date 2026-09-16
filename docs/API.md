@@ -15,16 +15,15 @@ All responses are JSON unless noted. Timestamps are ISO 8601 in UTC.
 
 The proxy listens on `http://127.0.0.1:8787` by default (`HOST`, `PORT`).
 
-If the operator set `PROXY_TOKEN`, every endpoint except `GET /health`
-requires:
+`PROXY_TOKEN` is required — the proxy refuses to start without it. Every
+endpoint except `GET /health` requires:
 
 ```
 authorization: Bearer <token>
 ```
 
-A missing or wrong token returns `401 { "error": "unauthorized" }`. When no
-token is configured the API is open, which is only appropriate on a private
-port.
+A missing or wrong token returns `401 { "error": "unauthorized" }`. The token
+is compared in constant time.
 
 ## Error shape
 
@@ -300,7 +299,7 @@ Set in the proxy's `.env`. Relevant to API callers:
 
 | variable              | default      | effect                                                  |
 | --------------------- | ------------ | ------------------------------------------------------- |
-| `PROXY_TOKEN`         | unset        | Bearer token; auth is off when unset.                   |
+| `PROXY_TOKEN`         | **required** | Bearer token; the proxy will not start without it.      |
 | `TIMEOUT_MS`          | `120000`     | `POST /run` timeout.                                    |
 | `MAX_BODY_BYTES`      | `1000000`    | `POST /run` body cap.                                   |
 | `RUN_TIMEOUT_MS`      | `3600000`    | Background run timeout.                                 |

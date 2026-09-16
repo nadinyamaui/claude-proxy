@@ -11,9 +11,12 @@ export function json(res: ServerResponse, status: number, body: unknown, onFlush
   res.end(payload, onFlush);
 }
 
-/** Constant-time bearer check. Returns true when the request may proceed. */
+/**
+ * Constant-time bearer check. Returns true when the request may proceed.
+ * There is no unauthenticated mode: `config.token` is always set, because
+ * startup fails without it.
+ */
 export function authorize(req: IncomingMessage): boolean {
-  if (!config.token) return true;
   const header = req.headers.authorization ?? "";
   const presented = Buffer.from(header.replace(/^Bearer /i, ""));
   const expected = Buffer.from(config.token);

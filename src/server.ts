@@ -75,9 +75,8 @@ export function start(): App {
   const orphans = app.runs.store.recoverOrphans();
   if (orphans > 0) console.log(`marked ${orphans} run(s) from a previous process as failed`);
   app.server.listen(config.port, config.host, () => {
-    const auth = config.token ? "token required" : "NO AUTH";
     console.log(
-      `proxy listening on http://${config.host}:${config.port} (${auth}); runs in ${config.runsDir}`,
+      `proxy listening on http://${config.host}:${config.port} (token required); runs in ${config.runsDir}`,
     );
   });
   return app;

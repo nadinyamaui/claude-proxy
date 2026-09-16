@@ -16,9 +16,9 @@ these properties before deploying it:
   tool access — they read and write files and run commands inside `WORKDIR`,
   with this process's full environment (including any provider API keys).
   Anyone who can reach `/run` can act as those agents.
-- **Auth is off when `PROXY_TOKEN` is unset.** The server binds to `127.0.0.1`
-  by default for exactly that reason. Set a strong token _and_ put the proxy
-  behind TLS before binding it to a routable address.
+- **`PROXY_TOKEN` is required.** The proxy refuses to start without it, so it
+  cannot come up unauthenticated. It still binds to `127.0.0.1` by default;
+  put it behind TLS before binding to a routable address.
 - **The token is compared in constant time**, but it is a single shared
   secret with no rotation, rate limiting, or per-caller identity. Add those at
   your reverse proxy if you need them.

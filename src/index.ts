@@ -1,4 +1,14 @@
-import { start } from "./server.js";
+import type { start as Start } from "./server.js";
+
+// Loaded dynamically so a configuration error (a missing PROXY_TOKEN, say)
+// surfaces as a one-line message instead of a module-load stack trace.
+let start: typeof Start;
+try {
+  ({ start } = await import("./server.js"));
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+}
 
 const app = start();
 
