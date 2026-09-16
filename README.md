@@ -173,9 +173,9 @@ access inside any directory they upload, and download whatever it produced.
 
 - Prompts are passed as argv values or over stdin to a directly-spawned
   process. No shell is involved, so prompts cannot be injected as commands.
-- `PROXY_TOKEN` gates `/run` with a constant-time comparison. **Auth is off
-  when it is unset** — the server binds to `127.0.0.1` by default for that
-  reason. Set both before exposing it anywhere.
+- `PROXY_TOKEN` gates every endpoint except `/health` with a constant-time
+  comparison. It is **required**: the proxy refuses to start without it, so
+  there is no unauthenticated mode to fall into by accident.
 - Request bodies are capped (`MAX_BODY_BYTES`) and each run is killed after
   `TIMEOUT_MS`.
 - The CLIs run with this process's full environment and real tool access,
