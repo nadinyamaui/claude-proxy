@@ -28,14 +28,23 @@ export const claude: Provider = {
   name: "claude",
   bin: process.env["CLAUDE_BIN"] || "claude",
 
+  // Print mode has nobody to answer permission prompts, so every tool call
+  // would be denied; the proxy is the trust boundary and runs unattended.
   args(req: RunRequest): string[] {
-    return ["-p", "--output-format", "json", ...flags(req)];
+    return ["-p", "--dangerously-skip-permissions", "--output-format", "json", ...flags(req)];
   },
 
   // `stream-json` needs `--verbose` in print mode. It emits one JSON event per
   // line and finishes with the same `result` object the json format returns.
   streamArgs(req: RunRequest): string[] {
-    return ["-p", "--output-format", "stream-json", "--verbose", ...flags(req)];
+    return [
+      "-p",
+      "--dangerously-skip-permissions",
+      "--output-format",
+      "stream-json",
+      "--verbose",
+      ...flags(req),
+    ];
   },
 
   parse(stdout: string): Omit<RunResult, "provider"> {

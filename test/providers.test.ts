@@ -17,15 +17,16 @@ describe("registry", () => {
 });
 
 describe("claude", () => {
-  it("asks for json and passes the prompt over stdin, not argv", () => {
+  it("asks for json, skips permission prompts and passes the prompt over stdin, not argv", () => {
     const args = claude.args({ prompt: "hello" });
-    expect(args).toEqual(["-p", "--output-format", "json"]);
+    expect(args).toEqual(["-p", "--dangerously-skip-permissions", "--output-format", "json"]);
     expect(args).not.toContain("hello");
   });
 
   it("maps resume, model and system prompt onto flags", () => {
     expect(claude.args({ prompt: "x", sessionId: "s1", model: "m1", systemPrompt: "be terse" })).toEqual([
       "-p",
+      "--dangerously-skip-permissions",
       "--output-format",
       "json",
       "--resume",
@@ -56,6 +57,7 @@ describe("claude", () => {
   it("streams with stream-json plus --verbose, keeping the same flags", () => {
     expect(claude.streamArgs?.({ prompt: "x", model: "m1" })).toEqual([
       "-p",
+      "--dangerously-skip-permissions",
       "--output-format",
       "stream-json",
       "--verbose",
