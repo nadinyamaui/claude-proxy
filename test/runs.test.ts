@@ -117,7 +117,12 @@ describe("POST /runs", () => {
     expect(run.result).toMatchObject({ text: "echo: WRITE", sessionId: "fake-session-1", costUsd: 0.42 });
     expect(run.result?.raw?.cwd).toBe(created.workdir);
     expect(run.result?.raw?.argv).toEqual(
-      expect.arrayContaining(["--output-format", "stream-json", "--verbose"]),
+      expect.arrayContaining([
+        "--dangerously-skip-permissions",
+        "--output-format",
+        "stream-json",
+        "--verbose",
+      ]),
     );
     expect(readFileSync(join(created.workdir, "written-by-fake-claude.txt"), "utf8")).toMatch(
       /hello from the agent/,
