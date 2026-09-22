@@ -54,11 +54,12 @@ process.stdin.on("end", () => {
     writeFileSync("written-by-fake-claude.txt", "hello from the agent\n");
   }
 
-  // ENV reports FAKE_ENV reversed, so tests can prove it arrived without the
-  // literal value showing up in the stored result.
+  // CREDS reports the API key reversed, so tests can prove it arrived without
+  // the literal value showing up in the stored result, plus the endpoint as-is.
+  const reversed = (v) => [...(v ?? "(unset)")].reverse().join("");
   const text =
-    prompt === "ENV"
-      ? `env: ${[...(process.env.FAKE_ENV ?? "(unset)")].reverse().join("")}`
+    prompt === "CREDS"
+      ? `key: ${reversed(process.env.ANTHROPIC_API_KEY)} url: ${process.env.ANTHROPIC_BASE_URL ?? "(unset)"}`
       : `echo: ${prompt}`;
   const result = {
     type: "result",

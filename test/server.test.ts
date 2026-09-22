@@ -88,6 +88,27 @@ describe("validation", () => {
     expect((await jsonBody(res)).error).toMatch(/claude, codex, grok/);
   });
 
+  it("rejects a baseUrl that is not an http(s) URL", async () => {
+    const responses = await Promise.all(
+      ["not a url", "file:///etc/passwd", 42].map((baseUrl) => run({ prompt: "hi", apiKey: "k", baseUrl })),
+    );
+    for (const res of responses) expect(res.status).toBe(400);
+    const bodies = await Promise.all(responses.map((res) => jsonBody(res)));
+    for (const body of bodies) expect(body.error).toMatch(/baseUrl must be an http or https URL/);
+  });
+
+  it("rejects a baseUrl without an apiKey, so the CLI's own login is never redirected", async () => {
+    const res = await run({ prompt: "hi", baseUrl: "https://gw.example" });
+    expect(res.status).toBe(400);
+    expect((await jsonBody(res)).error).toMatch(/baseUrl requires apiKey/);
+  });
+
+  it("rejects a non-string apiKey", async () => {
+    const res = await run({ prompt: "hi", apiKey: 42 });
+    expect(res.status).toBe(400);
+    expect((await jsonBody(res)).error).toMatch(/apiKey must be a string/);
+  });
+
   it("rejects a body that is not an object", async () => {
     expect((await run("just a string")).status).toBe(400);
   });
@@ -130,6 +151,17 @@ describe("POST /run against a stub CLI", () => {
     const res = await run({ prompt: "hi", sessionId: "s1", model: "m1" });
     const body = await jsonBody<{ raw: { argv: string[] } }>(res);
     expect(body.raw.argv).toEqual(expect.arrayContaining(["--resume", "s1", "--model", "m1"]));
+  });
+
+  it("hands apiKey and baseUrl to the CLI as environment variables", async () => {
+    const res = await run({ prompt: "CREDS", apiKey: "sk-test", baseUrl: "https://gw.example/v1" });
+    expect(res.status).toBe(200);
+    const body = await jsonBody<{ text: string; raw: { argv: string[] } }>(res);
+    expect(body.text).toBe("key: tset-ks url: https://gw.example/v1");
+    // Never on the command line, where other local users could read it.
+    expect(JSON.stringify(body.raw.argv)).not.toContain("sk-test");
+    // Scoped to that one child, not leaked into the proxy for later requests.
+    expect(process.env["ANTHROPIC_API_KEY"]).not.toBe("sk-test");
   });
 
   it("reports a CLI failure as 502 with its stderr", async () => {

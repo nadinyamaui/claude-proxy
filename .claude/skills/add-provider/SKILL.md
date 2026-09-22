@@ -40,6 +40,8 @@ import type { Provider, RunRequest, RunResult } from "./types.js";
 export const <name>: Provider = {
   name: "<name>",
   bin: process.env["<NAME>_BIN"] || "<name>",
+  // Env vars the CLI reads its API key / endpoint from; backs `apiKey` / `baseUrl`.
+  credentialEnv: { apiKey: ["<NAME>_API_KEY"], baseUrl: ["<NAME>_BASE_URL"] },
   args(req: RunRequest): string[] { /* flags only */ },
   stdin(req: RunRequest): string { /* optional; defaults to req.prompt */ },
   parse(stdout: string): Omit<RunResult, "provider"> {

@@ -45,6 +45,12 @@ function lastResultEvent(stdout: string): ClaudeJson | undefined {
 export const claude: Provider = {
   name: "claude",
   bin: process.env["CLAUDE_BIN"] || "claude",
+  // ANTHROPIC_AUTH_TOKEN outranks ANTHROPIC_API_KEY, so a request's key must blank it.
+  credentialEnv: {
+    apiKey: ["ANTHROPIC_API_KEY"],
+    baseUrl: ["ANTHROPIC_BASE_URL"],
+    overriddenBy: ["ANTHROPIC_AUTH_TOKEN"],
+  },
 
   // Print mode has nobody to answer permission prompts, so every tool call
   // would be denied; the proxy is the trust boundary and runs unattended.

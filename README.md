@@ -67,6 +67,8 @@ Unauthenticated. Returns `{ "ok": true, "providers": [...] }`.
   "sessionId": "…", // resume a prior turn
   "model": "…", // provider-specific model id
   "systemPrompt": "…", // extra instructions
+  "apiKey": "…", // use this API key instead of the CLI's login
+  "baseUrl": "https://…", // send the CLI's API calls here; requires apiKey
 }
 ```
 
@@ -81,6 +83,11 @@ Responds with:
   "raw": {}, // the provider's untouched output
 }
 ```
+
+`apiKey` and `baseUrl` reach the CLI as its own environment variables
+(`ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL` for claude, `OPENAI_API_KEY` /
+`OPENAI_BASE_URL` for codex, `GROK_API_KEY` / `GROK_BASE_URL` for grok), for
+that one call only. See [docs/API.md](docs/API.md#per-request-api-key-and-endpoint).
 
 Errors: `400` malformed request, `401` bad token, `413` body over
 `MAX_BODY_BYTES`, `502` the CLI failed (body carries `exitCode` and the CLI's
@@ -97,21 +104,21 @@ curl -s localhost:8787/run \
 For long agent sessions that need their own files. The body is
 `multipart/form-data`:
 
-| field          | required | notes                                                              |
-| -------------- | -------- | ------------------------------------------------------------------ |
-| `prompt`       | yes      |                                                                    |
-| `zip`          | no       | Unpacked into a fresh directory that becomes the CLI's cwd         |
-| `provider`     | no       | `claude` (default), `codex`, `grok`                                |
-| `model`        | no       | provider-specific model id                                         |
-| `systemPrompt` | no       | extra instructions                                                 |
-| `sessionId`    | no       | resume a prior session                                             |
-| `env`          | no       | JSON object of extra environment variables for this run's CLI only |
+| field          | required | notes                                                      |
+| -------------- | -------- | ---------------------------------------------------------- |
+| `prompt`       | yes      |                                                            |
+| `zip`          | no       | Unpacked into a fresh directory that becomes the CLI's cwd |
+| `provider`     | no       | `claude` (default), `codex`, `grok`                        |
+| `model`        | no       | provider-specific model id                                 |
+| `systemPrompt` | no       | extra instructions                                         |
+| `sessionId`    | no       | resume a prior session                                     |
+| `apiKey`       | no       | API key for this run only; never stored                    |
+| `baseUrl`      | no       | API endpoint for this run only; requires `apiKey`          |
 
 ```bash
 curl -s localhost:8787/runs \
   -F prompt="Build the site described in PRODUCT.md" \
-  -F zip=@website-build-69.zip \
-  -F env='{"WEBSITE_BUILD_MCP_TOKEN":"…"}'
+  -F zip=@website-build-69.zip
 ```
 
 Responds `202` with the run record and returns immediately. The zip is
@@ -182,8 +189,8 @@ access inside any directory they upload, and download whatever it produced.
   inside `WORKDIR` (or, for background runs, the uploaded directory). Anyone
   who can reach `/run` or `/runs` can act as those agents.
 - Uploaded zips are unpacked by a built-in reader that refuses path traversal,
-  symlinks and archives expanding past `MAX_UNZIP_BYTES`. Per-run `env` values
-  are passed to the CLI but never stored.
+  symlinks and archives expanding past `MAX_UNZIP_BYTES`. A request's `apiKey` is
+  passed to the CLI but never stored.
 
 See [SECURITY.md](SECURITY.md) for the full threat model and how to report a
 vulnerability.

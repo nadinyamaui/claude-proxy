@@ -13,6 +13,8 @@ type CodexEvent = {
 export const codex: Provider = {
   name: "codex",
   bin: process.env["CODEX_BIN"] || "codex",
+  // `codex exec` reads CODEX_API_KEY; older builds only know OPENAI_API_KEY.
+  credentialEnv: { apiKey: ["OPENAI_API_KEY", "CODEX_API_KEY"], baseUrl: ["OPENAI_BASE_URL"] },
 
   args(req: RunRequest): string[] {
     // `codex exec [--json] [resume <id>] [-m model] -`; the trailing `-` makes

@@ -29,18 +29,18 @@ is compared in constant time.
 
 Every error is `{ "error": "<message>" }`, sometimes with extra fields.
 
-| status | meaning                                                                  |
-| ------ | ------------------------------------------------------------------------ |
-| `400`  | Malformed request: missing prompt, unknown provider, bad zip, bad `env`. |
-| `401`  | Missing or wrong bearer token.                                           |
-| `404`  | Unknown path or run id.                                                  |
-| `405`  | Wrong method. The `allow` header lists what the path accepts.            |
-| `409`  | The run is already finished (cancel).                                    |
-| `410`  | The run's working directory no longer exists (download).                 |
-| `413`  | Body over `MAX_BODY_BYTES` (`/run`) or `MAX_UPLOAD_BYTES` (`/runs`).     |
-| `415`  | `POST /runs` was not `multipart/form-data`.                              |
-| `502`  | The CLI failed (`/run` only; see below).                                 |
-| `500`  | Unexpected proxy error.                                                  |
+| status | meaning                                                                                                               |
+| ------ | --------------------------------------------------------------------------------------------------------------------- |
+| `400`  | Malformed request: missing prompt, unknown provider, bad zip, bad `baseUrl`, or an `env` field (no longer supported). |
+| `401`  | Missing or wrong bearer token.                                                                                        |
+| `404`  | Unknown path or run id.                                                                                               |
+| `405`  | Wrong method. The `allow` header lists what the path accepts.                                                         |
+| `409`  | The run is already finished (cancel).                                                                                 |
+| `410`  | The run's working directory no longer exists (download).                                                              |
+| `413`  | Body over `MAX_BODY_BYTES` (`/run`) or `MAX_UPLOAD_BYTES` (`/runs`).                                                  |
+| `415`  | `POST /runs` was not `multipart/form-data`.                                                                           |
+| `502`  | The CLI failed (`/run` only; see below).                                                                              |
+| `500`  | Unexpected proxy error.                                                                                               |
 
 ## Providers
 
@@ -49,6 +49,39 @@ Every error is `{ "error": "<message>" }`, sometimes with extra fields.
 | `claude` | Default. Session resume and system prompt supported. Streams events into background logs. |
 | `codex`  | System prompt is prepended to the prompt. Streams JSONL into background logs.             |
 | `grok`   | No streaming mode; background logs contain the final output only.                         |
+
+### Per-request API key and endpoint
+
+`POST /run` and `POST /runs` both accept `apiKey` and `baseUrl`. They are
+passed to the CLI as the environment variables it already reads, for that
+one invocation only, so a request can use a different account or point at a
+gateway without changing the proxy's own login:
+
+| provider | `apiKey` sets                        | `baseUrl` sets       |
+| -------- | ------------------------------------ | -------------------- |
+| `claude` | `ANTHROPIC_API_KEY`                  | `ANTHROPIC_BASE_URL` |
+| `codex`  | `OPENAI_API_KEY` and `CODEX_API_KEY` | `OPENAI_BASE_URL`    |
+| `grok`   | `GROK_API_KEY`                       | `GROK_BASE_URL`      |
+
+**When they are omitted**, nothing is added and the CLI authenticates exactly
+as it would on its own, with the account it is logged into on the proxy host
+(including any `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GROK_API_KEY` the
+operator set in the proxy's `.env`).
+
+| request sends       | API key used        | endpoint used     |
+| ------------------- | ------------------- | ----------------- |
+| neither             | the CLI's own login | the CLI's default |
+| `apiKey` only       | `apiKey`            | the CLI's default |
+| `apiKey`, `baseUrl` | `apiKey`            | `baseUrl`         |
+| `baseUrl` only      | rejected with `400` |                   |
+
+`baseUrl` requires `apiKey`, so the proxy's own login is never sent to a
+caller-chosen endpoint. For `claude`, `apiKey` also blanks
+`ANTHROPIC_AUTH_TOKEN`, which the CLI would otherwise prefer over the key.
+
+`baseUrl` must be an `http` or `https` URL. The key is never put in argv,
+never stored with a run and never logged; for background runs only the
+variable names appear in the log.
 
 ---
 
@@ -69,13 +102,15 @@ Synchronous run. The request blocks until the CLI exits, up to `TIMEOUT_MS`
 
 **Request** (`application/json`)
 
-| field          | required | description                                  |
-| -------------- | -------- | -------------------------------------------- |
-| `prompt`       | yes      | Non-empty string.                            |
-| `provider`     | no       | `claude` (default), `codex` or `grok`.       |
-| `sessionId`    | no       | Resume a session returned by an earlier run. |
-| `model`        | no       | Provider-specific model id.                  |
-| `systemPrompt` | no       | Extra instructions.                          |
+| field          | required | description                                                                                       |
+| -------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `prompt`       | yes      | Non-empty string.                                                                                 |
+| `provider`     | no       | `claude` (default), `codex` or `grok`.                                                            |
+| `sessionId`    | no       | Resume a session returned by an earlier run.                                                      |
+| `model`        | no       | Provider-specific model id.                                                                       |
+| `systemPrompt` | no       | Extra instructions.                                                                               |
+| `apiKey`       | no       | API key for this call. See [Per-request API key and endpoint](#per-request-api-key-and-endpoint). |
+| `baseUrl`      | no       | API endpoint for this call (`http`/`https`).                                                      |
 
 **Response `200`**
 
@@ -112,17 +147,22 @@ Start a background run. Returns as soon as the run is queued.
 
 **Request** (`multipart/form-data`)
 
-| field          | required | description                                                                                                                                                                        |
-| -------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `prompt`       | yes      | Non-empty string.                                                                                                                                                                  |
-| `zip`          | no       | A zip file. It is unpacked into a fresh directory that becomes the CLI's working directory.                                                                                        |
-| `provider`     | no       | `claude` (default), `codex` or `grok`.                                                                                                                                             |
-| `model`        | no       | Provider-specific model id.                                                                                                                                                        |
-| `systemPrompt` | no       | Extra instructions.                                                                                                                                                                |
-| `sessionId`    | no       | Resume a session.                                                                                                                                                                  |
-| `env`          | no       | JSON object of string values, e.g. `{"WEBSITE_BUILD_MCP_TOKEN":"…"}`. Added to the CLI's environment for this run only. Values are never stored; only the names appear in the log. |
+| field          | required | description                                                                                 |
+| -------------- | -------- | ------------------------------------------------------------------------------------------- |
+| `prompt`       | yes      | Non-empty string.                                                                           |
+| `zip`          | no       | A zip file. It is unpacked into a fresh directory that becomes the CLI's working directory. |
+| `provider`     | no       | `claude` (default), `codex` or `grok`.                                                      |
+| `model`        | no       | Provider-specific model id.                                                                 |
+| `systemPrompt` | no       | Extra instructions.                                                                         |
+| `sessionId`    | no       | Resume a session.                                                                           |
+| `apiKey`       | no       | API key for this run. Never stored.                                                         |
+| `baseUrl`      | no       | API endpoint for this run (`http`/`https`). Requires `apiKey`.                              |
 
 Without a `zip`, the run gets an empty directory.
+
+The former `env` field is rejected with a `400`: arbitrary variables such as
+`ANTHROPIC_BASE_URL` could send the proxy's own login to another endpoint.
+Put tool secrets in the uploaded files (e.g. `.mcp.json`) instead.
 
 **Zip rules.** Stored and deflate-compressed entries are supported. Zip64
 (over 4 GB or more than 65535 entries) and encrypted archives are not.
@@ -141,8 +181,7 @@ as-is, so files the CLI reads from its working directory such as
 curl -s localhost:8787/runs \
   -H "authorization: Bearer $PROXY_TOKEN" \
   -F prompt="Build the site described in PRODUCT.md" \
-  -F zip=@website-build-69.zip \
-  -F env='{"WEBSITE_BUILD_MCP_TOKEN":"…"}'
+  -F zip=@website-build-69.zip
 ```
 
 ### The run record
@@ -236,7 +275,7 @@ Log lines, oldest first. Use this to follow a run while it works.
   per line (`system`, `assistant`, `user`, `result`). For codex, one JSONL
   event. For grok, the final output.
 - `stderr`: one line of the CLI's stderr.
-- `proxy`: lifecycle notes from the proxy: extraction, env variable names,
+- `proxy`: lifecycle notes from the proxy: extraction, credential variable names,
   queue position, start, exit, timeout, cancellation.
 
 **Polling pattern.** Call with `after=<next>` from the previous response,

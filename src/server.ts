@@ -43,8 +43,8 @@ export function createApp(runs: RunsService = createRunsService()): App {
           return;
         }
 
-        const { provider, req } = parseRunBody(await readJsonBody(httpReq));
-        json(res, 200, await run(provider, req));
+        const { provider, req, env } = parseRunBody(await readJsonBody(httpReq));
+        json(res, 200, await run(provider, req, env));
       } catch (err) {
         if (err instanceof BodyError) {
           // An oversized body leaves unread bytes in flight; close the

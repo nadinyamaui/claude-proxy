@@ -11,6 +11,20 @@ export function isProviderName(v: unknown): v is ProviderName {
   return typeof v === "string" && v in providers;
 }
 
+export type Credentials = { apiKey?: string; baseUrl?: string };
+
+/** Maps a request's credentials onto the environment variables `name`'s CLI reads. */
+export function credentialEnv(name: ProviderName, creds: Credentials): Record<string, string> {
+  const vars = providers[name].credentialEnv;
+  const env: Record<string, string> = {};
+  if (creds.apiKey) {
+    for (const key of vars.overriddenBy ?? []) env[key] = "";
+    for (const key of vars.apiKey) env[key] = creds.apiKey;
+  }
+  if (creds.baseUrl) for (const key of vars.baseUrl) env[key] = creds.baseUrl;
+  return env;
+}
+
 export type OutputStream = "stdout" | "stderr";
 
 export type ExecOptions = {
@@ -159,9 +173,16 @@ export function execProvider(
   });
 }
 
-/** One synchronous run: spawn, wait, normalize. Backs `POST /run`. */
-export function run(name: ProviderName, req: RunRequest): Promise<RunResult> {
-  return execProvider(name, req);
+/**
+ * One synchronous run: spawn, wait, normalize. Backs `POST /run`. `env` is
+ * merged over the proxy's environment for this call only.
+ */
+export function run(
+  name: ProviderName,
+  req: RunRequest,
+  env: Record<string, string> = {},
+): Promise<RunResult> {
+  return execProvider(name, req, Object.keys(env).length > 0 ? { env: { ...process.env, ...env } } : {});
 }
 
 export { ProviderError };

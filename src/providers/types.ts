@@ -21,6 +21,16 @@ export type Provider = {
   name: ProviderName;
   /** Binary to spawn; overridable per provider via env. */
   bin: string;
+  /**
+   * Environment variables the CLI reads its API key and endpoint from, so a
+   * request's `apiKey` / `baseUrl` can be handed to it without touching argv.
+   */
+  credentialEnv: {
+    apiKey: readonly string[];
+    baseUrl: readonly string[];
+    /** Variables the CLI would prefer over `apiKey`; blanked when a key is given. */
+    overriddenBy?: readonly string[];
+  };
   /** argv for a single non-interactive run. */
   args: (req: RunRequest) => string[];
   /**

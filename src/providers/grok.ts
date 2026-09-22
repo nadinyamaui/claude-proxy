@@ -19,6 +19,7 @@ type GrokJson = {
 export const grok: Provider = {
   name: "grok",
   bin: process.env["GROK_BIN"] || "grok",
+  credentialEnv: { apiKey: ["GROK_API_KEY"], baseUrl: ["GROK_BASE_URL"] },
 
   args(req: RunRequest): string[] {
     // grok takes the prompt as a `-p` value, not on stdin.
