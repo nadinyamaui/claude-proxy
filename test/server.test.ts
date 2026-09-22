@@ -141,6 +141,13 @@ describe("POST /run against a stub CLI", () => {
     expect(body.detail).toMatch(/asked to fail/);
   });
 
+  it("returns structured Claude failure feedback with a 502 response", async () => {
+    const res = await run({ prompt: "RATE_LIMIT" });
+
+    expect(res.status).toBe(502);
+    expect((await jsonBody(res)).error).toBe("You've hit your session limit · resets 11:10am (UTC)");
+  });
+
   it("reports unparseable CLI output as 502", async () => {
     const res = await run({ prompt: "NOTJSON" });
     expect(res.status).toBe(502);

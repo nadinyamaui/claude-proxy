@@ -9,6 +9,8 @@ type ClaudeJson = {
   is_error?: boolean;
 };
 
+const MAX_FAILURE_MESSAGE_LENGTH = 2000;
+
 function flags(req: RunRequest): string[] {
   const args: string[] = [];
   if (req.sessionId) args.push("--resume", req.sessionId);
@@ -22,6 +24,22 @@ function normalize(json: ClaudeJson): Omit<RunResult, "provider"> {
   if (json.session_id) out.sessionId = json.session_id;
   if (typeof json.total_cost_usd === "number") out.costUsd = json.total_cost_usd;
   return out;
+}
+
+function lastResultEvent(stdout: string): ClaudeJson | undefined {
+  const lines = stdout.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i]?.trim();
+    if (!line) continue;
+    let event: ClaudeJson;
+    try {
+      event = JSON.parse(line) as ClaudeJson;
+    } catch {
+      continue;
+    }
+    if (event.type === "result") return event;
+  }
+  return undefined;
 }
 
 export const claude: Provider = {
@@ -52,18 +70,15 @@ export const claude: Provider = {
   },
 
   parseStream(stdout: string): Omit<RunResult, "provider"> {
-    const lines = stdout.split("\n");
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i]?.trim();
-      if (!line) continue;
-      let event: ClaudeJson;
-      try {
-        event = JSON.parse(line) as ClaudeJson;
-      } catch {
-        continue;
-      }
-      if (event.type === "result") return normalize(event);
-    }
+    const event = lastResultEvent(stdout);
+    if (event) return normalize(event);
     throw new Error("stream ended without a result event");
+  },
+
+  failureMessage(stdout: string): string | undefined {
+    const event = lastResultEvent(stdout);
+    if (!event?.is_error || typeof event.result !== "string") return undefined;
+    const message = event.result.trim();
+    return message ? message.slice(0, MAX_FAILURE_MESSAGE_LENGTH) : undefined;
   },
 };

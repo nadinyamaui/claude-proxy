@@ -14,6 +14,25 @@ process.stdin.on("data", (c) => (stdin += c));
 process.stdin.on("end", () => {
   const prompt = stdin.trim();
 
+  if (prompt === "RATE_LIMIT") {
+    const message = "You've hit your session limit · resets 11:10am (UTC)";
+    const result = {
+      type: "result",
+      subtype: "success",
+      is_error: true,
+      result: message,
+      session_id: "fake-session-1",
+      api_error_status: 429,
+    };
+    if (streaming) {
+      process.stdout.write(JSON.stringify({ type: "rate_limit_event" }) + "\n");
+      process.stdout.write(JSON.stringify(result) + "\n");
+    } else {
+      process.stdout.write(JSON.stringify(result));
+    }
+    process.exit(1);
+  }
+
   if (prompt === "FAIL") {
     process.stderr.write("fake-claude: asked to fail\n");
     process.exit(3);

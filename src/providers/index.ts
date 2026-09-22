@@ -130,7 +130,15 @@ export function execProvider(
         return;
       }
       if (code !== 0) {
-        reject(new ProviderError(`${name} exited with code ${code}`, name, code, stderr.trim()));
+        reject(
+          new ProviderError(
+            `${name} exited with code ${code}`,
+            name,
+            code,
+            stderr.trim(),
+            provider.failureMessage?.(stdout),
+          ),
+        );
         return;
       }
       try {

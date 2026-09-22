@@ -175,6 +175,19 @@ describe("POST /runs", () => {
     expect(logs.lines.some((l) => l.stream === "stderr" && /asked to fail/.test(l.line))).toBe(true);
   });
 
+  it("returns structured Claude failure feedback instead of the process exit", async () => {
+    const created = await createRun({ prompt: "RATE_LIMIT" });
+
+    const run = await waitFor(created.id, terminal);
+
+    expect(run).toMatchObject({
+      status: "failed",
+      exitCode: 1,
+      error: "You've hit your session limit · resets 11:10am (UTC)",
+      result: null,
+    });
+  });
+
   it("rejects bad input with 400", async () => {
     const bad = async (fields: Record<string, string>, zip?: Blob) =>
       (await api("/runs", { method: "POST", body: form(fields, zip) })).json() as Promise<{ error: string }>;

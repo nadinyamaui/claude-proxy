@@ -80,6 +80,16 @@ describe("claude", () => {
   it("fails a stream that never produced a result", () => {
     expect(() => claude.parseStream?.(JSON.stringify({ type: "system" }))).toThrow(/without a result/);
   });
+
+  it("extracts feedback from a failed result event", () => {
+    const stdout = [
+      JSON.stringify({ type: "rate_limit_event" }),
+      JSON.stringify({ type: "result", is_error: true, result: "Session limit reached" }),
+    ].join("\n");
+
+    expect(claude.failureMessage?.(stdout)).toBe("Session limit reached");
+    expect(claude.failureMessage?.(JSON.stringify({ type: "result", result: "done" }))).toBeUndefined();
+  });
 });
 
 describe("codex", () => {

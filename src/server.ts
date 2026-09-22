@@ -54,7 +54,7 @@ export function createApp(runs: RunsService = createRunsService()): App {
           json(res, err.status, { error: err.message }, close);
         } else if (err instanceof ProviderError) {
           json(res, 502, {
-            error: err.message,
+            error: err.feedback ?? err.message,
             provider: err.provider,
             exitCode: err.code,
             detail: err.detail,
