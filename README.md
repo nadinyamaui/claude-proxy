@@ -68,7 +68,7 @@ Unauthenticated. Returns `{ "ok": true, "providers": [...] }`.
   "model": "…", // provider-specific model id
   "systemPrompt": "…", // extra instructions
   "apiKey": "…", // use this API key instead of the CLI's login
-  "baseUrl": "https://…", // send the CLI's API calls to this endpoint
+  "baseUrl": "https://…", // send the CLI's API calls here; requires apiKey
 }
 ```
 
@@ -114,7 +114,7 @@ For long agent sessions that need their own files. The body is
 | `sessionId`    | no       | resume a prior session                                             |
 | `env`          | no       | JSON object of extra environment variables for this run's CLI only |
 | `apiKey`       | no       | API key for this run only; never stored                            |
-| `baseUrl`      | no       | API endpoint for this run only                                     |
+| `baseUrl`      | no       | API endpoint for this run only; requires `apiKey`                  |
 
 ```bash
 curl -s localhost:8787/runs \

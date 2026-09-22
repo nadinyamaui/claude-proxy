@@ -171,7 +171,7 @@ describe("POST /runs", () => {
     expect(JSON.stringify(run)).not.toContain("sk-run");
     const logs = await getLogs(created.id);
     expect(logs.lines.map((l) => l.line)).toContainEqual(
-      "env overrides: ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL",
+      "env overrides: ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL",
     );
     expect(JSON.stringify(logs)).not.toContain("sk-run");
   });
@@ -214,7 +214,10 @@ describe("POST /runs", () => {
     expect((await bad({ prompt: "x", env: "nope" })).error).toMatch(/env must be a JSON object/);
     expect((await bad({ prompt: "x", env: '{"BAD KEY":"v"}' })).error).toMatch(/not a valid variable name/);
     expect((await bad({ prompt: "x", env: '{"K":1}' })).error).toMatch(/must be a string/);
-    expect((await bad({ prompt: "x", baseUrl: "ftp://x" })).error).toMatch(/baseUrl must be an http/);
+    expect((await bad({ prompt: "x", apiKey: "k", baseUrl: "ftp://x" })).error).toMatch(
+      /baseUrl must be an http/,
+    );
+    expect((await bad({ prompt: "x", baseUrl: "https://gw.example" })).error).toMatch(/requires apiKey/);
     expect((await bad({ prompt: "x" }, new Blob(["not a zip"]))).error).toMatch(/^zip: /);
   });
 

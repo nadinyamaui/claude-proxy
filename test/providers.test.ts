@@ -20,6 +20,7 @@ describe("credentialEnv", () => {
   it("maps apiKey and baseUrl onto each CLI's own variables", () => {
     const creds = { apiKey: "k", baseUrl: "https://gw.example" };
     expect(credentialEnv("claude", creds)).toEqual({
+      ANTHROPIC_AUTH_TOKEN: "",
       ANTHROPIC_API_KEY: "k",
       ANTHROPIC_BASE_URL: "https://gw.example",
     });
@@ -36,7 +37,13 @@ describe("credentialEnv", () => {
 
   it("sets nothing for credentials that were not given", () => {
     expect(credentialEnv("claude", {})).toEqual({});
-    expect(credentialEnv("claude", { apiKey: "k" })).toEqual({ ANTHROPIC_API_KEY: "k" });
+    expect(credentialEnv("claude", { apiKey: "k" })).toEqual({
+      ANTHROPIC_AUTH_TOKEN: "",
+      ANTHROPIC_API_KEY: "k",
+    });
+    expect(credentialEnv("claude", { baseUrl: "https://gw.example" })).toEqual({
+      ANTHROPIC_BASE_URL: "https://gw.example",
+    });
   });
 });
 

@@ -17,7 +17,10 @@ export type Credentials = { apiKey?: string; baseUrl?: string };
 export function credentialEnv(name: ProviderName, creds: Credentials): Record<string, string> {
   const vars = providers[name].credentialEnv;
   const env: Record<string, string> = {};
-  if (creds.apiKey) for (const key of vars.apiKey) env[key] = creds.apiKey;
+  if (creds.apiKey) {
+    for (const key of vars.overriddenBy ?? []) env[key] = "";
+    for (const key of vars.apiKey) env[key] = creds.apiKey;
+  }
   if (creds.baseUrl) for (const key of vars.baseUrl) env[key] = creds.baseUrl;
   return env;
 }

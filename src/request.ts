@@ -73,6 +73,8 @@ export function parseRunBody(body: unknown): {
   const creds: Credentials = {};
   const apiKey = str(b.apiKey);
   const baseUrl = parseBaseUrl(b.baseUrl);
+  // Without its own key, a redirected CLI would send the operator's login to baseUrl.
+  if (baseUrl && !apiKey) throw new BodyError("baseUrl requires apiKey");
   if (apiKey) creds.apiKey = apiKey;
   if (baseUrl) creds.baseUrl = baseUrl;
 

@@ -64,20 +64,20 @@ gateway without changing the proxy's own login:
 | `grok`   | `GROK_API_KEY`                       | `GROK_BASE_URL`      |
 
 **When they are omitted**, nothing is added and the CLI authenticates exactly
-as it would on its own, with the account it is logged into on the proxy host.
-Each field is independent:
+as it would on its own, with the account it is logged into on the proxy host
+(including any `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `GROK_API_KEY` the
+operator set in the proxy's `.env`).
 
 | request sends       | API key used        | endpoint used     |
 | ------------------- | ------------------- | ----------------- |
 | neither             | the CLI's own login | the CLI's default |
 | `apiKey` only       | `apiKey`            | the CLI's default |
-| `baseUrl` only      | the CLI's own login | `baseUrl`         |
 | `apiKey`, `baseUrl` | `apiKey`            | `baseUrl`         |
+| `baseUrl` only      | rejected with `400` |                   |
 
-"The CLI's own login" includes the proxy's environment: if the operator set
-`ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`, `GROK_API_KEY`, or a `*_BASE_URL`
-variable) in the proxy's `.env`, a request that omits the field uses that
-value, since the CLI prefers it over its stored login.
+`baseUrl` requires `apiKey`, so the proxy's own login is never sent to a
+caller-chosen endpoint. For `claude`, `apiKey` also blanks
+`ANTHROPIC_AUTH_TOKEN`, which the CLI would otherwise prefer over the key.
 
 `baseUrl` must be an `http` or `https` URL. The key is never put in argv,
 never stored with a run and never logged; for background runs only the

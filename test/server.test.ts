@@ -90,11 +90,17 @@ describe("validation", () => {
 
   it("rejects a baseUrl that is not an http(s) URL", async () => {
     const responses = await Promise.all(
-      ["not a url", "file:///etc/passwd", 42].map((baseUrl) => run({ prompt: "hi", baseUrl })),
+      ["not a url", "file:///etc/passwd", 42].map((baseUrl) => run({ prompt: "hi", apiKey: "k", baseUrl })),
     );
     for (const res of responses) expect(res.status).toBe(400);
     const bodies = await Promise.all(responses.map((res) => jsonBody(res)));
     for (const body of bodies) expect(body.error).toMatch(/baseUrl must be an http or https URL/);
+  });
+
+  it("rejects a baseUrl without an apiKey, so the CLI's own login is never redirected", async () => {
+    const res = await run({ prompt: "hi", baseUrl: "https://gw.example" });
+    expect(res.status).toBe(400);
+    expect((await jsonBody(res)).error).toMatch(/baseUrl requires apiKey/);
   });
 
   it("rejects a non-string apiKey", async () => {
