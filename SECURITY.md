@@ -36,9 +36,11 @@ these properties before deploying it:
   caller sent: the agent runs inside it with full tool access, and files such
   as `.mcp.json`, `CLAUDE.md` or `AGENTS.md` in the upload configure the
   agent. Treat uploaders as trusted operators.
-- **Per-run `env` values are passed to the CLI and never written to SQLite**;
-  only the variable names are logged. They are held in memory while the run is
-  queued or running.
+- **A request's `apiKey` is passed to the CLI and never written to SQLite**;
+  only the variable names are logged. It is held in memory while the run is
+  queued or running. Callers cannot set other environment variables, and
+  `baseUrl` requires `apiKey`, so the proxy's own login is never sent to a
+  caller-chosen endpoint.
 - **`GET /runs/:id/workdir.zip` serves the whole working directory**,
   including anything the agent wrote there. The run API shares the
   `PROXY_TOKEN` gate with `/run` and is meant for a private port.

@@ -32,29 +32,6 @@ export function createRunsService(): RunsService {
   };
 }
 
-const ENV_KEY = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
-function parseEnv(raw: string | undefined): Record<string, string> {
-  if (!raw) return {};
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    throw new BodyError("env must be a JSON object of string values");
-  }
-  if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-    throw new BodyError("env must be a JSON object of string values");
-  }
-  const env: Record<string, string> = {};
-  for (const [key, value] of Object.entries(parsed)) {
-    if (!ENV_KEY.test(key))
-      throw new BodyError(`env key ${JSON.stringify(key)} is not a valid variable name`);
-    if (typeof value !== "string") throw new BodyError(`env.${key} must be a string`);
-    env[key] = value;
-  }
-  return env;
-}
-
 function field(form: FormData, name: string): string | undefined {
   const v = form.get(name);
   if (v === null) return undefined;
@@ -85,10 +62,13 @@ function insideRunsDir(dir: string): boolean {
 
 async function createRun(svc: RunsService, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const form = await readMultipart(req, config.maxUploadBytes);
+  // Arbitrary per-run env could redirect the CLI (e.g. ANTHROPIC_BASE_URL)
+  // with the operator's login; only apiKey / baseUrl reach its environment.
+  if (form.has("env")) throw new BodyError("env is not supported; use apiKey and baseUrl");
   const {
     provider,
     req: runReq,
-    env: creds,
+    env,
   } = parseRunBody({
     provider: field(form, "provider"),
     prompt: field(form, "prompt"),
@@ -98,8 +78,6 @@ async function createRun(svc: RunsService, req: IncomingMessage, res: ServerResp
     apiKey: field(form, "apiKey"),
     baseUrl: field(form, "baseUrl"),
   });
-  // Explicit apiKey / baseUrl win over the same variables in `env`.
-  const env = { ...parseEnv(field(form, "env")), ...creds };
 
   const upload = form.get("zip");
   if (upload !== null && !(upload instanceof File)) throw new BodyError("zip must be a file upload");
@@ -136,7 +114,7 @@ async function createRun(svc: RunsService, req: IncomingMessage, res: ServerResp
     );
   }
   if (Object.keys(env).length > 0) {
-    svc.store.appendLog(id, "proxy", `env overrides: ${Object.keys(env).join(", ")}`);
+    svc.store.appendLog(id, "proxy", `credential env: ${Object.keys(env).join(", ")}`);
   }
   svc.runner.enqueue(id, env);
   json(res, 202, view(svc.store.get(id) ?? run, { full: true }));

@@ -146,32 +146,18 @@ describe("POST /runs", () => {
     expect((await waitFor(created.id, terminal)).result?.text).toBe("echo: hi");
   });
 
-  it("passes per-run env to the CLI without storing it", async () => {
-    const created = await createRun({ prompt: "ENV", env: JSON.stringify({ FAKE_ENV: "s3cret" }) });
-    const run = await waitFor(created.id, terminal);
-    // The fixture echoes the value reversed, so the secret itself must not
-    // appear anywhere in what the proxy stored.
-    expect(run.result?.text).toBe("env: terc3s");
-    expect(JSON.stringify(run)).not.toContain("s3cret");
-    const logs = await getLogs(created.id);
-    expect(logs.lines.map((l) => l.line)).toContainEqual("env overrides: FAKE_ENV");
-    expect(JSON.stringify(logs)).not.toContain("s3cret");
-  });
-
   it("passes apiKey and baseUrl to the CLI without storing the key", async () => {
     const created = await createRun({
       prompt: "CREDS",
       apiKey: "sk-run",
       baseUrl: "https://gw.example",
-      // The explicit fields win over the same variable in env.
-      env: JSON.stringify({ ANTHROPIC_API_KEY: "loser" }),
     });
     const run = await waitFor(created.id, terminal);
     expect(run.result?.text).toBe("key: nur-ks url: https://gw.example");
     expect(JSON.stringify(run)).not.toContain("sk-run");
     const logs = await getLogs(created.id);
     expect(logs.lines.map((l) => l.line)).toContainEqual(
-      "env overrides: ANTHROPIC_API_KEY, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_BASE_URL",
+      "credential env: ANTHROPIC_AUTH_TOKEN, ANTHROPIC_API_KEY, ANTHROPIC_BASE_URL",
     );
     expect(JSON.stringify(logs)).not.toContain("sk-run");
   });
@@ -211,9 +197,9 @@ describe("POST /runs", () => {
       (await api("/runs", { method: "POST", body: form(fields, zip) })).json() as Promise<{ error: string }>;
     expect((await bad({})).error).toMatch(/prompt is required/);
     expect((await bad({ prompt: "x", provider: "gemini" })).error).toMatch(/unknown provider/);
-    expect((await bad({ prompt: "x", env: "nope" })).error).toMatch(/env must be a JSON object/);
-    expect((await bad({ prompt: "x", env: '{"BAD KEY":"v"}' })).error).toMatch(/not a valid variable name/);
-    expect((await bad({ prompt: "x", env: '{"K":1}' })).error).toMatch(/must be a string/);
+    expect((await bad({ prompt: "x", env: '{"ANTHROPIC_BASE_URL":"https://x"}' })).error).toMatch(
+      /env is not supported/,
+    );
     expect((await bad({ prompt: "x", apiKey: "k", baseUrl: "ftp://x" })).error).toMatch(
       /baseUrl must be an http/,
     );
