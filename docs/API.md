@@ -63,7 +63,22 @@ gateway without changing the proxy's own login:
 | `codex`  | `OPENAI_API_KEY` and `CODEX_API_KEY` | `OPENAI_BASE_URL`    |
 | `grok`   | `GROK_API_KEY`                       | `GROK_BASE_URL`      |
 
-Leave them out to use whatever the CLI is logged into on the proxy host.
+**When they are omitted**, nothing is added and the CLI authenticates exactly
+as it would on its own, with the account it is logged into on the proxy host.
+Each field is independent:
+
+| request sends       | API key used        | endpoint used     |
+| ------------------- | ------------------- | ----------------- |
+| neither             | the CLI's own login | the CLI's default |
+| `apiKey` only       | `apiKey`            | the CLI's default |
+| `baseUrl` only      | the CLI's own login | `baseUrl`         |
+| `apiKey`, `baseUrl` | `apiKey`            | `baseUrl`         |
+
+"The CLI's own login" includes the proxy's environment: if the operator set
+`ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`, `GROK_API_KEY`, or a `*_BASE_URL`
+variable) in the proxy's `.env`, a request that omits the field uses that
+value, since the CLI prefers it over its stored login.
+
 `baseUrl` must be an `http` or `https` URL. The key is never put in argv,
 never stored with a run and never logged; for background runs only the
 variable names appear in the log.
