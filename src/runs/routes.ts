@@ -85,14 +85,21 @@ function insideRunsDir(dir: string): boolean {
 
 async function createRun(svc: RunsService, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const form = await readMultipart(req, config.maxUploadBytes);
-  const { provider, req: runReq } = parseRunBody({
+  const {
+    provider,
+    req: runReq,
+    env: creds,
+  } = parseRunBody({
     provider: field(form, "provider"),
     prompt: field(form, "prompt"),
     sessionId: field(form, "sessionId"),
     model: field(form, "model"),
     systemPrompt: field(form, "systemPrompt"),
+    apiKey: field(form, "apiKey"),
+    baseUrl: field(form, "baseUrl"),
   });
-  const env = parseEnv(field(form, "env"));
+  // Explicit apiKey / baseUrl win over the same variables in `env`.
+  const env = { ...parseEnv(field(form, "env")), ...creds };
 
   const upload = form.get("zip");
   if (upload !== null && !(upload instanceof File)) throw new BodyError("zip must be a file upload");

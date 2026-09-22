@@ -56,10 +56,14 @@ process.stdin.on("end", () => {
 
   // ENV reports FAKE_ENV reversed, so tests can prove it arrived without the
   // literal value showing up in the stored result.
+  // CREDS does the same for the API key, plus the endpoint as-is.
+  const reversed = (v) => [...(v ?? "(unset)")].reverse().join("");
   const text =
     prompt === "ENV"
-      ? `env: ${[...(process.env.FAKE_ENV ?? "(unset)")].reverse().join("")}`
-      : `echo: ${prompt}`;
+      ? `env: ${reversed(process.env.FAKE_ENV)}`
+      : prompt === "CREDS"
+        ? `key: ${reversed(process.env.ANTHROPIC_API_KEY)} url: ${process.env.ANTHROPIC_BASE_URL ?? "(unset)"}`
+        : `echo: ${prompt}`;
   const result = {
     type: "result",
     subtype: "success",

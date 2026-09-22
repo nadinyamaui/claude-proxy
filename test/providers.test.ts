@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { claude } from "../src/providers/claude.js";
 import { codex } from "../src/providers/codex.js";
 import { grok } from "../src/providers/grok.js";
-import { isProviderName, providers } from "../src/providers/index.js";
+import { credentialEnv, isProviderName, providers } from "../src/providers/index.js";
 
 describe("registry", () => {
   it("exposes the three providers", () => {
@@ -13,6 +13,30 @@ describe("registry", () => {
     expect(isProviderName("claude")).toBe(true);
     expect(isProviderName("gemini")).toBe(false);
     expect(isProviderName(undefined)).toBe(false);
+  });
+});
+
+describe("credentialEnv", () => {
+  it("maps apiKey and baseUrl onto each CLI's own variables", () => {
+    const creds = { apiKey: "k", baseUrl: "https://gw.example" };
+    expect(credentialEnv("claude", creds)).toEqual({
+      ANTHROPIC_API_KEY: "k",
+      ANTHROPIC_BASE_URL: "https://gw.example",
+    });
+    expect(credentialEnv("codex", creds)).toEqual({
+      OPENAI_API_KEY: "k",
+      CODEX_API_KEY: "k",
+      OPENAI_BASE_URL: "https://gw.example",
+    });
+    expect(credentialEnv("grok", creds)).toEqual({
+      GROK_API_KEY: "k",
+      GROK_BASE_URL: "https://gw.example",
+    });
+  });
+
+  it("sets nothing for credentials that were not given", () => {
+    expect(credentialEnv("claude", {})).toEqual({});
+    expect(credentialEnv("claude", { apiKey: "k" })).toEqual({ ANTHROPIC_API_KEY: "k" });
   });
 });
 

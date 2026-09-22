@@ -29,18 +29,18 @@ is compared in constant time.
 
 Every error is `{ "error": "<message>" }`, sometimes with extra fields.
 
-| status | meaning                                                                  |
-| ------ | ------------------------------------------------------------------------ |
-| `400`  | Malformed request: missing prompt, unknown provider, bad zip, bad `env`. |
-| `401`  | Missing or wrong bearer token.                                           |
-| `404`  | Unknown path or run id.                                                  |
-| `405`  | Wrong method. The `allow` header lists what the path accepts.            |
-| `409`  | The run is already finished (cancel).                                    |
-| `410`  | The run's working directory no longer exists (download).                 |
-| `413`  | Body over `MAX_BODY_BYTES` (`/run`) or `MAX_UPLOAD_BYTES` (`/runs`).     |
-| `415`  | `POST /runs` was not `multipart/form-data`.                              |
-| `502`  | The CLI failed (`/run` only; see below).                                 |
-| `500`  | Unexpected proxy error.                                                  |
+| status | meaning                                                                               |
+| ------ | ------------------------------------------------------------------------------------- |
+| `400`  | Malformed request: missing prompt, unknown provider, bad zip, bad `env` or `baseUrl`. |
+| `401`  | Missing or wrong bearer token.                                                        |
+| `404`  | Unknown path or run id.                                                               |
+| `405`  | Wrong method. The `allow` header lists what the path accepts.                         |
+| `409`  | The run is already finished (cancel).                                                 |
+| `410`  | The run's working directory no longer exists (download).                              |
+| `413`  | Body over `MAX_BODY_BYTES` (`/run`) or `MAX_UPLOAD_BYTES` (`/runs`).                  |
+| `415`  | `POST /runs` was not `multipart/form-data`.                                           |
+| `502`  | The CLI failed (`/run` only; see below).                                              |
+| `500`  | Unexpected proxy error.                                                               |
 
 ## Providers
 
@@ -49,6 +49,24 @@ Every error is `{ "error": "<message>" }`, sometimes with extra fields.
 | `claude` | Default. Session resume and system prompt supported. Streams events into background logs. |
 | `codex`  | System prompt is prepended to the prompt. Streams JSONL into background logs.             |
 | `grok`   | No streaming mode; background logs contain the final output only.                         |
+
+### Per-request API key and endpoint
+
+`POST /run` and `POST /runs` both accept `apiKey` and `baseUrl`. They are
+passed to the CLI as the environment variables it already reads, for that
+one invocation only, so a request can use a different account or point at a
+gateway without changing the proxy's own login:
+
+| provider | `apiKey` sets                        | `baseUrl` sets       |
+| -------- | ------------------------------------ | -------------------- |
+| `claude` | `ANTHROPIC_API_KEY`                  | `ANTHROPIC_BASE_URL` |
+| `codex`  | `OPENAI_API_KEY` and `CODEX_API_KEY` | `OPENAI_BASE_URL`    |
+| `grok`   | `GROK_API_KEY`                       | `GROK_BASE_URL`      |
+
+Leave them out to use whatever the CLI is logged into on the proxy host.
+`baseUrl` must be an `http` or `https` URL. The key is never put in argv,
+never stored with a run and never logged; for background runs only the
+variable names appear in the log.
 
 ---
 
@@ -69,13 +87,15 @@ Synchronous run. The request blocks until the CLI exits, up to `TIMEOUT_MS`
 
 **Request** (`application/json`)
 
-| field          | required | description                                  |
-| -------------- | -------- | -------------------------------------------- |
-| `prompt`       | yes      | Non-empty string.                            |
-| `provider`     | no       | `claude` (default), `codex` or `grok`.       |
-| `sessionId`    | no       | Resume a session returned by an earlier run. |
-| `model`        | no       | Provider-specific model id.                  |
-| `systemPrompt` | no       | Extra instructions.                          |
+| field          | required | description                                                                                       |
+| -------------- | -------- | ------------------------------------------------------------------------------------------------- |
+| `prompt`       | yes      | Non-empty string.                                                                                 |
+| `provider`     | no       | `claude` (default), `codex` or `grok`.                                                            |
+| `sessionId`    | no       | Resume a session returned by an earlier run.                                                      |
+| `model`        | no       | Provider-specific model id.                                                                       |
+| `systemPrompt` | no       | Extra instructions.                                                                               |
+| `apiKey`       | no       | API key for this call. See [Per-request API key and endpoint](#per-request-api-key-and-endpoint). |
+| `baseUrl`      | no       | API endpoint for this call (`http`/`https`).                                                      |
 
 **Response `200`**
 
@@ -121,6 +141,8 @@ Start a background run. Returns as soon as the run is queued.
 | `systemPrompt` | no       | Extra instructions.                                                                                                                                                                |
 | `sessionId`    | no       | Resume a session.                                                                                                                                                                  |
 | `env`          | no       | JSON object of string values, e.g. `{"WEBSITE_BUILD_MCP_TOKEN":"…"}`. Added to the CLI's environment for this run only. Values are never stored; only the names appear in the log. |
+| `apiKey`       | no       | API key for this run. Wins over the same variable in `env`. Never stored.                                                                                                          |
+| `baseUrl`      | no       | API endpoint for this run (`http`/`https`). Wins over the same variable in `env`.                                                                                                  |
 
 Without a `zip`, the run gets an empty directory.
 

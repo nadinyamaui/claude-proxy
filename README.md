@@ -67,6 +67,8 @@ Unauthenticated. Returns `{ "ok": true, "providers": [...] }`.
   "sessionId": "…", // resume a prior turn
   "model": "…", // provider-specific model id
   "systemPrompt": "…", // extra instructions
+  "apiKey": "…", // use this API key instead of the CLI's login
+  "baseUrl": "https://…", // send the CLI's API calls to this endpoint
 }
 ```
 
@@ -81,6 +83,11 @@ Responds with:
   "raw": {}, // the provider's untouched output
 }
 ```
+
+`apiKey` and `baseUrl` reach the CLI as its own environment variables
+(`ANTHROPIC_API_KEY` / `ANTHROPIC_BASE_URL` for claude, `OPENAI_API_KEY` /
+`OPENAI_BASE_URL` for codex, `GROK_API_KEY` / `GROK_BASE_URL` for grok), for
+that one call only. See [docs/API.md](docs/API.md#per-request-api-key-and-endpoint).
 
 Errors: `400` malformed request, `401` bad token, `413` body over
 `MAX_BODY_BYTES`, `502` the CLI failed (body carries `exitCode` and the CLI's
@@ -106,6 +113,8 @@ For long agent sessions that need their own files. The body is
 | `systemPrompt` | no       | extra instructions                                                 |
 | `sessionId`    | no       | resume a prior session                                             |
 | `env`          | no       | JSON object of extra environment variables for this run's CLI only |
+| `apiKey`       | no       | API key for this run only; never stored                            |
+| `baseUrl`      | no       | API endpoint for this run only                                     |
 
 ```bash
 curl -s localhost:8787/runs \
