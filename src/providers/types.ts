@@ -35,6 +35,8 @@ export type Provider = {
   parse: (stdout: string) => Omit<RunResult, "provider">;
   /** Like `parse`, for the output `streamArgs` produces. */
   parseStream?: (stdout: string) => Omit<RunResult, "provider">;
+  /** Extracts a concise provider-reported failure from structured output. */
+  failureMessage?: (stdout: string) => string | undefined;
 };
 
 export class ProviderError extends Error {
@@ -43,6 +45,7 @@ export class ProviderError extends Error {
     readonly provider: ProviderName,
     readonly code: number | null,
     readonly detail: string,
+    readonly feedback?: string,
   ) {
     super(message);
     this.name = "ProviderError";

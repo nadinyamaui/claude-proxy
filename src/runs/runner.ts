@@ -106,11 +106,12 @@ export class Runner {
       this.store.finish(id, { status: "succeeded", exitCode: 0, result });
     } catch (err) {
       if (err instanceof ProviderError) {
-        log(err.message);
+        const error = err.feedback ?? err.message;
+        log(error);
         this.store.finish(id, {
           status: signal.aborted ? "cancelled" : "failed",
           exitCode: err.code,
-          error: err.message,
+          error,
         });
       } else {
         const message = err instanceof Error ? err.message : String(err);
