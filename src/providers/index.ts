@@ -92,10 +92,13 @@ export function execProvider(
     let cancelled = false;
     let killTimer: NodeJS.Timeout | undefined;
 
-    const timer = setTimeout(() => {
-      timedOut = true;
-      child.kill("SIGKILL");
-    }, timeoutMs);
+    const timer =
+      timeoutMs > 0
+        ? setTimeout(() => {
+            timedOut = true;
+            child.kill("SIGKILL");
+          }, timeoutMs)
+        : undefined;
 
     const onAbort = () => {
       cancelled = true;

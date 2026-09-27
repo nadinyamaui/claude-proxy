@@ -215,8 +215,9 @@ curl -s localhost:8787/runs \
 **Status lifecycle.** `queued` → `running` → one of `succeeded`, `failed`,
 `cancelled`. At most `MAX_CONCURRENT_RUNS` (default 2) execute at once; the
 rest wait in order. A run is killed and marked `failed` after
-`RUN_TIMEOUT_MS` (default one hour). If the proxy restarts, runs that were
-queued or running are marked `failed` with the error
+`RUN_TIMEOUT_MS` (default one hour; `0` lets runs go on until they finish or
+are cancelled). If the proxy restarts, runs that were queued or running are
+marked `failed` with the error
 `proxy restarted while the run was in progress`.
 
 ---
@@ -339,9 +340,9 @@ Set in the proxy's `.env`. Relevant to API callers:
 | variable              | default      | effect                                                  |
 | --------------------- | ------------ | ------------------------------------------------------- |
 | `PROXY_TOKEN`         | **required** | Bearer token; the proxy will not start without it.      |
-| `TIMEOUT_MS`          | `120000`     | `POST /run` timeout.                                    |
+| `TIMEOUT_MS`          | `120000`     | `POST /run` timeout; `0` disables it.                   |
 | `MAX_BODY_BYTES`      | `1000000`    | `POST /run` body cap.                                   |
-| `RUN_TIMEOUT_MS`      | `3600000`    | Background run timeout.                                 |
+| `RUN_TIMEOUT_MS`      | `3600000`    | Background run timeout; `0` disables it.                |
 | `MAX_UPLOAD_BYTES`    | `100000000`  | `POST /runs` body cap, including the zip.               |
 | `MAX_UNZIP_BYTES`     | `1000000000` | Cap on what a zip may expand to.                        |
 | `MAX_CONCURRENT_RUNS` | `2`          | Background runs executing at once.                      |
