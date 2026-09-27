@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { claude } from "../src/providers/claude.js";
 import { codex } from "../src/providers/codex.js";
 import { grok } from "../src/providers/grok.js";
-import { credentialEnv, isProviderName, providers } from "../src/providers/index.js";
+import { credentialEnv, execProvider, isProviderName, providers } from "../src/providers/index.js";
 
 describe("registry", () => {
   it("exposes the three providers", () => {
@@ -186,5 +186,18 @@ describe("grok", () => {
     expect(() => grok.parse(JSON.stringify({ type: "error", message: "not signed in" }))).toThrow(
       /not signed in/,
     );
+  });
+});
+
+describe("timeouts", () => {
+  it("kills a CLI that outlives its timeout", async () => {
+    await expect(execProvider("claude", { prompt: "HANG" }, { timeoutMs: 100 })).rejects.toThrow(/timed out/);
+  });
+
+  it("never kills a CLI when the timeout is zero", async () => {
+    const controller = new AbortController();
+    const run = execProvider("claude", { prompt: "HANG" }, { timeoutMs: 0, signal: controller.signal });
+    setTimeout(() => controller.abort(), 300);
+    await expect(run).rejects.toThrow(/cancelled/);
   });
 });

@@ -151,7 +151,7 @@ A run record looks like:
 ```
 
 Runs execute `MAX_CONCURRENT_RUNS` at a time (default 2) and are killed after
-`RUN_TIMEOUT_MS` (default one hour). Claude runs use `--output-format
+`RUN_TIMEOUT_MS` (default one hour, `0` for no timeout). Claude runs use `--output-format
 stream-json --verbose` so every event lands in the log as it happens; codex
 already streams JSONL; grok has no streaming mode, so its log is the final
 output. If the proxy restarts, runs that were queued or running are marked
