@@ -61,6 +61,12 @@ function form(fields: Record<string, string>, zip?: Blob): FormData {
   return fd;
 }
 
+async function rejectRun(fields: Record<string, string>, zip?: Blob): Promise<{ error: string }> {
+  return (await api("/runs", { method: "POST", body: form(fields, zip) })).json() as Promise<{
+    error: string;
+  }>;
+}
+
 async function createRun(fields: Record<string, string>, zip?: Blob): Promise<Run> {
   const res = await api("/runs", { method: "POST", body: form(fields, zip) });
   expect(res.status).toBe(202);
@@ -193,18 +199,18 @@ describe("POST /runs", () => {
   });
 
   it("rejects bad input with 400", async () => {
-    const bad = async (fields: Record<string, string>, zip?: Blob) =>
-      (await api("/runs", { method: "POST", body: form(fields, zip) })).json() as Promise<{ error: string }>;
-    expect((await bad({})).error).toMatch(/prompt is required/);
-    expect((await bad({ prompt: "x", provider: "gemini" })).error).toMatch(/unknown provider/);
-    expect((await bad({ prompt: "x", env: '{"ANTHROPIC_BASE_URL":"https://x"}' })).error).toMatch(
+    expect((await rejectRun({})).error).toMatch(/prompt is required/);
+    expect((await rejectRun({ prompt: "x", provider: "gemini" })).error).toMatch(/unknown provider/);
+    expect((await rejectRun({ prompt: "x", env: '{"ANTHROPIC_BASE_URL":"https://x"}' })).error).toMatch(
       /env is not supported/,
     );
-    expect((await bad({ prompt: "x", apiKey: "k", baseUrl: "ftp://x" })).error).toMatch(
+    expect((await rejectRun({ prompt: "x", apiKey: "k", baseUrl: "ftp://x" })).error).toMatch(
       /baseUrl must be an http/,
     );
-    expect((await bad({ prompt: "x", baseUrl: "https://gw.example" })).error).toMatch(/requires apiKey/);
-    expect((await bad({ prompt: "x" }, new Blob(["not a zip"]))).error).toMatch(/^zip: /);
+    expect((await rejectRun({ prompt: "x", baseUrl: "https://gw.example" })).error).toMatch(
+      /requires apiKey/,
+    );
+    expect((await rejectRun({ prompt: "x" }, new Blob(["not a zip"]))).error).toMatch(/^zip: /);
   });
 
   it("rejects a zip that expands past MAX_UNZIP_BYTES", async () => {
